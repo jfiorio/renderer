@@ -17,6 +17,12 @@ extern double eye_phi;
 static bool useOpenGL = false;  /* Determines OpenGL or software rendering mode */
 static Timer timer1;            /* Used to compute rendering speed in frames per second */
 
+static int w_prev=0, h_prev=0;
+static FrameBuffer *fb = 0;
+static bool reset_fb = true;
+
+static SceneRender sceneRender=SceneRender();
+
 /* GLUT callback function */
 void display(void)
 {
@@ -86,18 +92,36 @@ void display(void)
    }
    else /* software rendering mode */
    {
-      FrameBuffer fb(w, h); /* This is the object that the
-                               software renderer will render
-                               the Scene object into. */
-
+      if (reset_fb)
+      {
+        if (fb)
+          delete fb;
+        fb = new FrameBuffer(w, h);
+        w_prev = w;             /* software renderer will render */
+        h_prev = h;             /* the Scene object into. */
+        reset_fb = false;
+      }
+      
+      if (w_prev != w || h_prev != h)
+      {
+        reset_fb = true;
+        if (fb)
+          delete fb;
+        fb = new FrameBuffer(w, h);
+        w_prev = w;             /* software renderer will render */
+        h_prev = h;             /* the Scene object into. */
+        reset_fb = false;
+      }
+      
       // initialize the framebuffer (set a background color)
-      fb.clearFB(220, 220, 220);
+      fb->clearFB(220, 220, 220);
 
-      renderScene(scene, &fb);
+      
+      sceneRender.renderScene(scene, fb);
 
       /* now transfer the pixel data from our framebuffer to OpenGL's frame buffer */
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glDrawPixels( w, h, GL_RGB, GL_UNSIGNED_BYTE, fb.pixel_buffer );
+      glDrawPixels( w, h, GL_RGB, GL_UNSIGNED_BYTE, fb->pixel_buffer );
       glFlush();
       glFinish(); /* wait while everything gets rendered */
       checkErrorsOpenGL("OpenGL errors in software rendering of scene!");
@@ -121,7 +145,7 @@ void display(void)
          for(int j = 0; j < w; j++)
          {
             unsigned char *p = NULL;
-            fb.getPixelVP(i,j, &p);
+            fb->getPixelVP(i,j, &p);
             *(data + i*w*3 + j*3 + 0) = p[0];
             *(data + i*w*3 + j*3 + 1) = p[1];
             *(data + i*w*3 + j*3 + 2) = p[2];

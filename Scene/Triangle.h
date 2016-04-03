@@ -5,6 +5,7 @@
 #include "Texture.h"
 #include "Material.h"
 #include "Fragment.h"
+#include "List.h"
 
 class Triangle
 {
@@ -13,9 +14,11 @@ class Triangle
       Vertex v[3];    /* the vertices of this triangle */
       Texture *tex;   /* point to a texture data structure */
       Material *mtrl; /* point to a data structure that describes material properties */
-
-      Fragment * fragment_p; /* list of fragments (after rasterization stage) */
-
+      
+      List<Fragment> fragments; /* list of fragments (after rasterization stage) */
+      Pool<Fragment> *fragmentPool; /* pool fragments allocated from */
+      Pool<Triangle> *trianglePool; /* pool of triangles allocated from */
+      
       Triangle();
       ~Triangle();  // ~Triangle() calls ~Fragment().
                     // The Material object must be deleted manually!!

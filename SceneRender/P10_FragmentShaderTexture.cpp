@@ -1,93 +1,158 @@
-#include <stdio.h>
-#include "SceneLib.h"
+#include "P10_FragmentShaderTexture.h"
 
-void P10_FragmentShaderTexture(Scene* scene)
+P10_FragmentShaderTexture::P10_FragmentShaderTexture() : PipelineStage()
 {
-   // Walk the list of Triangle objects and for each traingle,
-   // walk its list of Fragment objects. For each fragment, use
-   // the barycentric coordinates in the fragment to interpolate
-   // color data or texture data from the triangle's three vertices
-   //to the fragment.
+  attributes |= (STAGE_ATTRIB_READ_VERTEX_POSITION | 
+                 STAGE_ATTRIB_READ_FRAGMENT_LIST | 
+                 STAGE_ATTRIB_WRITE_VERTEX_COLOR);  
+}
 
-   for (TriangleListNode *ptr = (scene->head_node).next;  ptr;  ptr = ptr->next)
-   {
-      if (NULL == ptr->t->tex)  // if this triangle dows not have a texture
+void P10_FragmentShaderTexture::processTriangles(Context *context)
+{
+  for (ListNode<Triangle> *ptr = context->triangles->head; ptr; ptr = ptr->next)
+  {
+    if (NULL == ptr->tex)  // if this triangle does not have a texture
+    {
+      // For this triangle, get the color information
+      // from each of the three vertices.
+      float r0 = ptr->v[0].r;
+      float g0 = ptr->v[0].g;
+      float b0 = ptr->v[0].b;
+      //float a0 = ptr->v[0].a;
+      float r1 = ptr->v[1].r;
+      float g1 = ptr->v[1].g;
+      float b1 = ptr->v[1].b;
+      //float a1 = ptr->v[1].a;
+      float r2 = ptr->v[2].r;
+      float g2 = ptr->v[2].g;
+      float b2 = ptr->v[2].b;
+      //float a2 = ptr->v[2].a;
+   
+      // Walk this triangle's list of fragments.
+      for (ListNode<Fragment> *fptr = ptr->fragments.head; fptr; fptr = fptr->next)
       {
-         // For this triangle, get the color information
-         // from each of the three vertices.
-         double r0 = ptr->t->v[0].r;
-         double g0 = ptr->t->v[0].g;
-         double b0 = ptr->t->v[0].b;
-         double a0 = ptr->t->v[0].a;
-         double r1 = ptr->t->v[1].r;
-         double g1 = ptr->t->v[1].g;
-         double b1 = ptr->t->v[1].b;
-         double a1 = ptr->t->v[1].a;
-         double r2 = ptr->t->v[2].r;
-         double g2 = ptr->t->v[2].g;
-         double b2 = ptr->t->v[2].b;
-         double a2 = ptr->t->v[2].a;
-
-         // Walk this triangle's list of fragments.
-         for (Fragment *fptr = ptr->t->fragment_p; fptr; fptr = fptr->nextFragment)
-         {
-            // get this fragment's barycentric coordinates
-            double alpha = fptr->alpha;
-            double beta  = fptr->beta;
-            double gamma = fptr->gamma;
-
-            //fprintf(stderr, "alpha = %f, beta = %f, gamma = %f\n", alpha,beta,gamma);
-
-            // interpolate color data from the triangle's vertices to this fragment
-            fptr->r = alpha*r0 + beta*r1 + gamma*r2;
-            fptr->g = alpha*g0 + beta*g1 + gamma*g2;
-            fptr->b = alpha*b0 + beta*b1 + gamma*b2;
-            fptr->a = alpha*a0 + beta*a1 + gamma*a2;
-            //fprintf(stderr, "r = %f, g = %f, b = %f\n", fptr->r,fptr->g,fptr->b);
-         }
+        // get this fragment's barycentric coordinates
+        float alpha = fptr->alpha;
+        float beta  = fptr->beta;
+        float gamma = fptr->gamma;
+   
+        //fprintf(stderr, "alpha = %f, beta = %f, gamma = %f\n", alpha,beta,gamma);
+   
+        // interpolate color data from the triangle's vertices to this fragment
+        fptr->r = (alpha*r0 + beta*r1 + gamma*r2)*255;
+        fptr->g = (alpha*g0 + beta*g1 + gamma*g2)*255;
+        fptr->b = (alpha*b0 + beta*b1 + gamma*b2)*255;
+        //fptr->a = alpha*a0 + beta*a1 + gamma*a2;
+        //fprintf(stderr, "r = %f, g = %f, b = %f\n", fptr->r,fptr->g,fptr->b);
       }
-      else  // do the texture case
-      {
-         // For this triangle, get the texture coordinates
-         // from each of the three vertices.
-         double s0 = ptr->t->v[0].s;
-         double t0 = ptr->t->v[0].t;
-         double s1 = ptr->t->v[1].s;
-         double t1 = ptr->t->v[1].t;
-         double s2 = ptr->t->v[2].s;
-         double t2 = ptr->t->v[2].t;
+    }
+    else  // do the texture case
+    {     
+      #ifndef ALIGN16
+      #define ALIGN16 __attribute__ ((aligned(32)))
+      #endif
+    
+      ALIGN16 __m128 coords[8] = { 0 };
+      ALIGN16 __m256 temp0, temp1, temp2, temp3, temp4;
 
-         // Walk this triangle's list of fragments.
-         for (Fragment *fptr = ptr->t->fragment_p; fptr; fptr = fptr->nextFragment)
-         {
-            // get this fragment's barycentric coordinates
-            double alpha = fptr->alpha;
-            double beta  = fptr->beta;
-            double gamma = fptr->gamma;
+      // For this triangle, get the texture coordinates
+      // from each of the three vertices.
+      float s0 = ptr->v[0].s;
+      float t0 = ptr->v[0].t;
+      float s1 = ptr->v[1].s;
+      float t1 = ptr->v[1].t;
+      float s2 = ptr->v[2].s;
+      float t2 = ptr->v[2].t;
+	  	
+      // Also get the w coordinates, 
+      // for perspective-correct mapping
+      float w0 = ptr->v[0].w;
+      float w1 = ptr->v[1].w;
+      float w2 = ptr->v[2].w;
+      
+      // Get width, height, texture data pointer
+      int w = ptr->tex->width;
+	  	int h = ptr->tex->height;
+      unsigned int *data = (unsigned int*)ptr->tex->data;
+      
+      ALIGN16 __m256 wv = _mm256_set1_ps(w);
+      ALIGN16 __m256 hv = _mm256_set1_ps(h);
+            
+      // Set up texture coordinate vectors
+      ALIGN16 __m256 s0coords = _mm256_set1_ps(s0);
+      ALIGN16 __m256 s1coords = _mm256_set1_ps(s1);
+      ALIGN16 __m256 s2coords = _mm256_set1_ps(s2);
 
-            //fprintf(stderr, "alpha = %f, beta = %f, gamma = %f\n", alpha,beta,gamma);
+      ALIGN16 __m256 t0coords = _mm256_set1_ps(t0);
+      ALIGN16 __m256 t1coords = _mm256_set1_ps(t1);
+      ALIGN16 __m256 t2coords = _mm256_set1_ps(t2);
 
-            // interpolate texture coordinates, for this fragment, from the triangle's vertices
-            double s = alpha*s0 + beta*s1 + gamma*s2;
-            double t = alpha*t0 + beta*t1 + gamma*t2;
+      // Set up w coordinate vector 
+      // for perspective correct mapping
+      ALIGN16 __m256 w0coords = _mm256_set1_ps((float)1/w0);
+      ALIGN16 __m256 w1coords = _mm256_set1_ps((float)1/w1);
+      ALIGN16 __m256 w2coords = _mm256_set1_ps((float)1/w2);
 
-            s = s - (int)s;  // wrap the texture in both the s
-            t = t - (int)t;  // and t coordinate directions
+      ListNode<Fragment> *fragment = ptr->fragments.size ? ptr->fragments.head->next : 0;
 
-            //fprintf(stderr, "s = %f, t = %f\n", fptr->s,fptr->t);
+      Fragment *fragmentr[8] = { 0 };
+      while (fragment)
+      {        
+        int f;
+        for (f=0; f<8; f++)
+        {
+          fragmentr[f] = fragment;
+          if (!fragmentr[f]) { break; }
+          coords[f] = _mm_loadu_ps((float*)&fragment->alpha);
+          fragment = fragment->next;
+        }
+        
+        temp0 = _mm256_setr_ps(coords[0][0], coords[1][0], coords[2][0], coords[3][0],
+                               coords[4][0], coords[5][0], coords[6][0], coords[7][0]);
+        temp1 = _mm256_setr_ps(coords[0][1], coords[1][1], coords[2][1], coords[3][1],
+                               coords[4][1], coords[5][1], coords[6][1], coords[7][1]);
+        temp2 = _mm256_setr_ps(coords[0][2], coords[1][2], coords[2][2], coords[3][2],
+                               coords[4][2], coords[5][2], coords[6][2], coords[7][2]);
+                   
+        temp0 = _mm256_mul_ps(temp0, w0coords); // a/w0
+        temp1 = _mm256_mul_ps(temp1, w1coords); // b/w1
+        temp2 = _mm256_mul_ps(temp2, w2coords); // g/w2
+        
+        temp3 = _mm256_mul_ps(temp0, s0coords); // s0*(a/w0)
+        temp4 = _mm256_mul_ps(temp1, s1coords); // s1*(b/w1)
+        
+        temp3 = _mm256_add_ps(temp3, temp4);    // s0*(a/w0)+s1*(b/w1)
+        temp4 = _mm256_mul_ps(temp2, s2coords); // s2*(g/w2)
+        temp3 = _mm256_add_ps(temp3, temp4);    // s0*(a/w0)+s1*(b/w1)+s2*(g/w2)
+        
+        temp4 = _mm256_mul_ps(temp0, t0coords); // t0*(a/w0)
+        temp0 = _mm256_add_ps(temp0, temp1);    // a/w0 + b/w1
+        temp0 = _mm256_add_ps(temp0, temp2);    // a/w0 + b/w1 + g/w2
+        
+        temp1 = _mm256_mul_ps(temp1, t1coords); // t1*(b/w1)
+        temp1 = _mm256_add_ps(temp1, temp4);    // t1*(b/w1)+t0*(a/w0)
+        temp2 = _mm256_mul_ps(temp2, t2coords); // t2*(b/w2)
+        temp1 = _mm256_add_ps(temp1, temp2);    // t0*(a/w0)+t1*(b/w1)+t2*(g/w2)
+        
+        temp3 = _mm256_div_ps(temp3, temp0);    // s = (s0*(a/w0)+s1*(b/w1)+s2*(g/w2))/(a/w0 + b/w1 + g/w2)
+        temp1 = _mm256_div_ps(temp1, temp0);    // t = (t0*(a/w0)+t1*(b/w1)+t2*(g/w2))/(a/w0 + b/w1 + g/w2)
+        
+        temp0 = _mm256_floor_ps(temp3);
+        temp0 = _mm256_sub_ps(temp3, temp0);    // s - (int)s
+        temp2 = _mm256_floor_ps(temp1);
+        temp1 = _mm256_sub_ps(temp1, temp2);    // t - (int)t
+        
+        temp1 = _mm256_mul_ps(temp1, hv);
+        temp1 = _mm256_floor_ps(temp1);
+        temp0 = _mm256_add_ps(temp0, temp1);
+        temp0 = _mm256_mul_ps(temp0, wv);
 
-            // convert (interpolated) texture coordinates into pixel indices
-            int i = t * ptr->t->tex->height;  // row index
-            int j = s * ptr->t->tex->width;   // column index
-
-            // copy color data from the texture to this fragment
-            fptr->r = *((ptr->t->tex->data)+(i*3*(ptr->t->tex->width))+(3*j)+0) / 255.0;
-            fptr->g = *((ptr->t->tex->data)+(i*3*(ptr->t->tex->width))+(3*j)+1) / 255.0;
-            fptr->b = *((ptr->t->tex->data)+(i*3*(ptr->t->tex->width))+(3*j)+2) / 255.0;
-            fptr->a = 1.0;
-            //fprintf(stderr, "r = %f, g = %f, b = %f\n", fptr->r,fptr->g,fptr->b);
-         }
+        for (int r=0; r<f; r++)
+        {
+          unsigned int offset = temp0[r];
+          fragmentr[r]->pixel = data[offset];
+        }
       }
-   }
-   return;
+    }
+  }
 }

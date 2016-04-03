@@ -3,17 +3,17 @@
 
 void renderSceneOpenGL(Scene *s)
 {
-   GLdouble m1[]={s->view.v1.x, s->view.v1.y, s->view.v1.z, s->view.v1.w,
+   GLfloat m1[]={s->view.v1.x, s->view.v1.y, s->view.v1.z, s->view.v1.w,
                   s->view.v2.x, s->view.v2.y, s->view.v2.z, s->view.v2.w,
                   s->view.v3.x, s->view.v3.y, s->view.v3.z, s->view.v3.w,
                   s->view.v4.x, s->view.v4.y, s->view.v4.z, s->view.v4.w};
 
-   GLdouble m2[]={s->model.v1.x, s->model.v1.y, s->model.v1.z, s->model.v1.w,
+   GLfloat m2[]={s->model.v1.x, s->model.v1.y, s->model.v1.z, s->model.v1.w,
                   s->model.v2.x, s->model.v2.y, s->model.v2.z, s->model.v2.w,
                   s->model.v3.x, s->model.v3.y, s->model.v3.z, s->model.v3.w,
                   s->model.v4.x, s->model.v4.y, s->model.v4.z, s->model.v4.w};
 
-   GLdouble m3[]={s->projection.v1.x, s->projection.v1.y, s->projection.v1.z, s->projection.v1.w,
+   GLfloat m3[]={s->projection.v1.x, s->projection.v1.y, s->projection.v1.z, s->projection.v1.w,
                   s->projection.v2.x, s->projection.v2.y, s->projection.v2.z, s->projection.v2.w,
                   s->projection.v3.x, s->projection.v3.y, s->projection.v3.z, s->projection.v3.w,
                   s->projection.v4.x, s->projection.v4.y, s->projection.v4.z, s->projection.v4.w};
@@ -71,7 +71,7 @@ void renderSceneOpenGL(Scene *s)
    /* use the Scene object to set OpenGL's modelview matrix */
    glMatrixMode(GL_MODELVIEW);
    glLoadIdentity();
-   glMultMatrixd( (const GLdouble*)&m1 );  // change world to view coordinates
+   glMultMatrixf( (const GLfloat*)&m1 );  // change world to view coordinates
 
    /* if we are using a light, convert it from world to view coordinates */
    if (s->doLighting && s->light)
@@ -79,13 +79,13 @@ void renderSceneOpenGL(Scene *s)
       glLightfv(GL_LIGHT0, GL_POSITION, s->light->pos);
    }
 
-   glMultMatrixd( (const GLdouble*)&m2 );  // change model to world coordinates
+   glMultMatrixf( (const GLfloat*)&m2 );  // change model to world coordinates
 
 
    /* use the Scene object to set OpenGL's projection matrix */
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
-   glMultMatrixd( (const GLdouble*)&m3 );
+   glMultMatrixf( (const GLfloat*)&m3 );
 
    glClearColor(100/(float)255, 0.0, 0.0, 0.0);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -97,9 +97,9 @@ void renderSceneOpenGL(Scene *s)
 #endif /* DEBUG1 */
 
    /* render each Triangle from the list of Triangle objects */
-   for (TriangleListNode *ptr = (s->head_node).next;  ptr;  ptr = ptr->next)
+   for (ListNode<Triangle> *ptr = (s->triangles).head; ptr; ptr = ptr->next)
    {
-      renderTriangleOpenGL(ptr->t, s->doLighting);
+      renderTriangleOpenGL(ptr, s->doLighting);
    }
 
 #if DEBUG1
@@ -196,7 +196,7 @@ void initializeTexturesOpenGL(Scene *s)
 
       glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, s->textures[i]->width,
                                               s->textures[i]->height,
-                                              0, GL_RGB, GL_UNSIGNED_BYTE,
+                                              0, GL_RGBA, GL_UNSIGNED_BYTE,
                                               s->textures[i]->data );
    }
 
@@ -229,8 +229,8 @@ void switchTextureFilteringOpenGL(Scene *s)
 
 void printOpenGLMatrix(GLenum pname) // GL_PROJECTION_MATRIX or GL_MODELVIEW_MATRIX
 {
-   GLdouble m[16];
-   glGetDoublev(pname, m);
+   GLfloat m[16];
+   glGetFloatv(pname, m);
    fprintf(stderr,"{{% .6f % .6f % .6f % .6f}\n",  m[0], m[4], m[ 8], m[12]);
    fprintf(stderr," {% .6f % .6f % .6f % .6f}\n",  m[1], m[5], m[ 9], m[13]);
    fprintf(stderr," {% .6f % .6f % .6f % .6f}\n",  m[2], m[6], m[10], m[14]);

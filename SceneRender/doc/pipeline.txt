@@ -1,0 +1,156 @@
+-SceneRender will create the list of PipelineStages and the PipelineThreads
+ that will use that permutation of stages as a means of scheduling themselves
+ PipelineJobs
+ 
+-PipelineJobs divide themselves into smaller PipelineJobs when they can be 
+ processed concurrently. A PipelineJob consists of a list of input geometry/
+ triangles and a list of PipelineStages that will operate on those triangles.
+ A PipelineJob is instantiated with:
+  - a reference to the input Scene
+  - a reference to the PipelineThread(s) that shall be assigned the job
+  - a reference to the list of PipelineStages that will operate on the input 
+    geometry and Scene
+  
+-Before dividing itself during instantiation* (see below), if at all, a 
+ PipelineJob only associates with the requested PipelineThread or the
+ PipelineThread in the specified list that is the 'Main' thread.
+ (**QUICK EDIT: FOR NOW, IT JUST ASSUMES THAT THE 'MAIN' THREAD IS THE 
+    FIRST IN THE LIST-BUT THIS SHOULD BE FIXED...)
+    
+-When a PipelineJob is instantiated with multiple PipelineThreads to be 
+ assigned to, it corrects this by, itself, instantiating a PipelineJob 
+ for each PipelineThread that is not the main thread, and linking the 
+ jobs as 'children'. Each child job is an additional 'part' of the 
+ requested job: one part of the job-the parent job-associates with 
+ the main thread, and the other parts of the job-the child jobs-
+ associate with each of the other threads. Each child job or job part 
+ will be processed thru the same (requested) sequence of PipelineStages
+ as the parent job part.
+ 
+-For this division of jobs to be of any use, there must be a method for 
+ divding the requested input geometry amongst the respective job parts.
+ This input geometry shall be taken from the specified Scene if no 
+ alternative source is specified.
+ 
+-Furthermore, for this division of jobs to be of maximum benefit, there 
+ must be a method for dividing the requested input geometry amongst the 
+ respective job parts such that maximum throughput is acheived when they 
+ (the job parts) are processed by their respective threads. 
+ 
+-Optimal division of the input geometry depends on how the sequence of 
+ PipelineStages are expected to perform in processing it, as job parts 
+ in their respective threads.
+ 
+-Some PipelineStages will alter the arrangement of input geometry. In 
+ these stages, one thread/job part may remove the entirety of or a 
+ large amount of its input while another thread/job part may add 
+ additional input; this will result in a further unbalanced workload 
+ for the threads/parts in subsequent stages that use this input 
+ (or invalid references for the input) if additional measures are not 
+ taken.
+ 
+-It is thus necessary to (optimally) redistribute the input geometry 
+ amongst the job parts after the completion of PipelineStages that 
+ alter its arrangement. However, since each thread performs a part 
+ of the job whose processing is constituted of these stages, 
+ completion of a particular PipelineStage only occurs after all 
+ threads have completed it.
+ 
+-PipelineStages have a field of flags that indicate the characteristics
+ of their operation. These include:
+  - Whether the stage writes/modifies the arrangement of triangles
+  - Whether the stage writes/modifies the arrangement of triangle fragments
+  - Whether the stage reads/traverses the arrangement of triangles
+  - Whether the stage reads/traverses the arrangement of triangle fragments
+  - Whether the stage writes/modifies triangle vertex positions
+  - Whether the stage reads triangle vertex positions
+  - Whether the stage writes/modifies triangle vertex colors
+  - Whether the stage reads triangle vertex colors
+  - Whether the stage performance depends solely on the number of input triangles
+    (i.e only reads [or possibly modifies] the arrangement of triangles)
+    
+-We expect PipelineStages who only read/traverse the arrangment of triangles
+ or whose performance depends solely on the number of input triangles to 
+ run in an amount of time proportional to the number of input trianges. Thus
+ an optimal division simply divides the Scene input triangles evenly amongst
+ the job parts.
+ 
+-Thus, the steps for determining and performing an optimal division/distribution
+ of the input geometry are:
+  - Find the next stage in the requested sequence that traverses an arrangement
+    of geometry
+    - If it traverses only the arrangement of triangles, divide evenly the Scene 
+      triangles into groups for each job part; assign the groups as the input
+      for the job parts
+    - If it traverses the arrangement of fragments for each triangle:
+      a) Begin with separate groups for each of the n job parts
+      b) Assign the first n triangles in the scene to their own groups
+      c) Assign the next triangle in the scene to the group which, altogether, 
+         at -this- point, has the least number of fragments totaled over its 
+         triangles. Repeat this step until all triangles have been assigned a 
+         group
+      d) Assign the groups as the input for the job parts
+      (This ensures an even distribution of fragments for processing amongst the 
+       threads.)
+      
+-The steps for processing a job part are then:
+  - Execute all PipelineStages up to the next that modifies the arrangment of 
+    Scene geometry
+  - *Wait for other all other job parts (' threads) to reach this point
+  - *Redistribute optimally the input geometry according to the type of PipelineStage 
+    that modified the Scene geometry arrangement
+  - *Assign the "remainder" of the job part (that is, with the remaining PipelineStages
+    and the redistributed geometry) as a new PipelineJob, to its respective thread.
+    
+-The last 3 steps above shall be the responsibilty of only one thread's (i.e
+ the Main thread's) part of the job. All other job parts are otherwise completed after the 
+ first step-that is, after executing PipelineStages up to the next that modifies the 
+ arrangement of Scene geometry.
+ = PipelineThreads take one of two actions after completing a job:
+   - If no jobs remain "in their queue", further processing is suspended until they 
+     are awoken
+   - If jobs remain in their queue, they continue processing the next job 
+ = Whether one of the other threads has remaining job[s] (parts) in their queue 
+   immediately after completing a job part [which determines the next action it
+   will take] is a matter of whether the Main thread has completed its part of the 
+   job first:
+   - If a thread finishes its part of the job before the Main thread, it will be 
+     suspended until awoken by the Main thread
+   - The Main thread does not assign further jobs to the other threads until each
+     has finished its part of the job
+   - The Main thread, therefore, does not complete its part of the job (which includes
+     assigning further jobs to the other threads) until all other threads have 
+     completed their part of the job
+   - None of the other threads finish their part of the job after the Main thread; all 
+     of the other threads finish their part of the job before the Main thread
+   - All other threads are thus suspended-until after the Main thread has assigned 
+     them their next jobs, at which point they are awoken
+ = Unlike the other threads, the Main thread's part of the job additionally handles 
+   optimal scheduling and synchronization of the other parts of the job
+   
+  
+  
+       T1                  T2                  T3                  T4
+ =================== DIVIDE TRIANGLES AMONGST THREADS ========================
+P1_Model2World      P1_Model2World      P1_Model2World      P1_Model2World
+P2_World2View       P2_World2View       P2_World2View       P2_World2View    
+P3_BackfaceCulling  P3_BackfaceCulling  P3_BackfaceCulling  P3_BackfaceCulling  
+SYNC                SYNC                SYNC                SYNC
+ =================== DIVIDE TRIANGLES AMONGST THREADS ========================
+P4_Lighting         P4_Lighting         P4_Lighting         P4_Lighting
+P5_View2Clip        P5_View2Clip        P5_View2Clip        P5_View2Clip
+P6_Clipping         P6_Clipping         P6_Clipping         P6_Clipping
+SYNC                SYNC                SYNC                SYNC
+ =================== DIVIDE TRIANGLES AMONGST THREADS ========================
+P7_Clip2NDC         P7_Clip2NDC         P7_Clip2NDC         P7_Clip2NDC 
+P8_NDC2VP           P8_NDC2VP           P8_NDC2VP           P8_NDC2VP           
+P9_Rasterize        P9_Rasterize        P9_Rasterize        P9_Rasterize     
+SYNC  
+ =================== DIVIDE TRIANGLES AMONGST THREADS ========================
+
+
+ 
+T->T->T->....->T-|->T->T->T->....->T-|->T->T->T->....->T-|->T->T->T->....->T
+
+
+  

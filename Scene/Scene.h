@@ -1,18 +1,20 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include "TriangleListNode.h"
 #include "Triangle.h"
 #include "Texture.h"
 #include "Matrix.h"
 #include "Light.h"
+#include "List.h"
 
 class Scene
 {
    private:
    public:
-      TriangleListNode head_node;  /* a linked list of triangles */
-      TriangleListNode *tail_ptr;
+      List<Triangle> triangles;
+      Pool<Triangle> *trianglePool; 
+      Pool<Fragment> *fragmentPool;
+      
       Texture * textures[256];     /* an array of pointers to Texture objects */
       int textureCount;
       bool bilerp_flag;  /* Determines which rendering mode to use for textures. */
@@ -37,29 +39,28 @@ class Scene
 
       ~Scene();  // ~Scene() calls ~Triangle() which calls ~Fragment().
                  // The Light, Texture, and Material objects must be deleted manually!!
-
-      void addTriangle(Triangle * tri);
-
+      
+      void addTriangle(Triangle * t);
       void addTexture(Texture * tex);
 
       void proj2Identity();
       void projMult(Matrix m);
-      void projPerspective(double fovy, double aspect, double zNear, double zFar);
-      void projFrustum(double left, double right, double bottom, double top, double near, double far);
-      void projOrtho(double left, double right, double bottom, double top, double near, double far);
+      void projPerspective(float fovy, float aspect, float zNear, float zFar);
+      void projFrustum(float left, float right, float bottom, float top, float near, float far);
+      void projOrtho(float left, float right, float bottom, float top, float near, float far);
 
       void view2Identity();
-      void viewLookAt(double eyex,    double eyey,    double eyez,
-                      double centerx, double centery, double centerz,
-                      double upx,     double upy,     double upz);
-      void viewRotate(double theta, double x, double y, double z);
-      void viewTranslate(double x, double y, double z);
+      void viewLookAt(float eyex,    float eyey,    float eyez,
+                      float centerx, float centery, float centerz,
+                      float upx,     float upy,     float upz);
+      void viewRotate(float theta, float x, float y, float z);
+      void viewTranslate(float x, float y, float z);
 
       void model2Identity();
       void modelMult(Matrix m);
-      void modelRotate(double theta, double x, double y, double z);
-      void modelScale(double x, double y, double z);
-      void modelTranslate(double x, double y, double z);
+      void modelRotate(float theta, float x, float y, float z);
+      void modelScale(float x, float y, float z);
+      void modelTranslate(float x, float y, float z);
 
       void setViewport(int width, int height);
 

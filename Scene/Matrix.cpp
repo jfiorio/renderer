@@ -23,7 +23,7 @@ Matrix::Matrix(Vector v)   /* translation matrix */
 }
 
 
-Matrix::Matrix(double d)  /* diagonal matrix */
+Matrix::Matrix(float d)  /* diagonal matrix */
 {
    v1 = Vector(   d, 0.0, 0.0, 0.0 );
    v2 = Vector( 0.0,   d, 0.0, 0.0 );
@@ -32,7 +32,7 @@ Matrix::Matrix(double d)  /* diagonal matrix */
 }
 
 
-Matrix::Matrix(double x, double y, double z)  /* scalling matrix */
+Matrix::Matrix(float x, float y, float z)  /* scaling matrix */
 {
    v1 = Vector(   x, 0.0, 0.0, 0.0 );
    v2 = Vector( 0.0,   y, 0.0, 0.0 );
@@ -41,16 +41,16 @@ Matrix::Matrix(double x, double y, double z)  /* scalling matrix */
 }
 
 
-Matrix::Matrix(double theta, double x, double y, double z) /* rotation matrix */
+Matrix::Matrix(float theta, float x, float y, float z) /* rotation matrix */
 {
    /*  http://www.opengl.org/sdk/docs/man/xhtml/glRotate.xml  */
-   double norm = sqrt(x*x + y*y + z*z);
-   double ux = x/norm;
-   double uy = y/norm;
-   double uz = z/norm;
+   float norm = sqrt(x*x + y*y + z*z);
+   float ux = x/norm;
+   float uy = y/norm;
+   float uz = z/norm;
 
-   double c = cos( (PI/180.0)*theta );
-   double s = sin( (PI/180.0)*theta );
+   float c = cos( (PI/180.0)*theta );
+   float s = sin( (PI/180.0)*theta );
 
    v1 = Vector( ux*ux*(1-c)+c,      uy*ux*(1-c)+(uz*s), uz*ux*(1-c)-(uy*s), 0.0 );
    v2 = Vector( ux*uy*(1-c)-(uz*s), uy*uy*(1-c)+c,      uz*uy*(1-c)+(ux*s), 0.0 );
@@ -68,7 +68,7 @@ Matrix::Matrix(Vector _v1, Vector _v2, Vector _v3, Vector _v4)
 }
 
 
-void Matrix::setColumn(int col, double x, double y, double z, double w)
+void Matrix::setColumn(int col, float x, float y, float z, float w)
 {
    if (col == 1)
    {
@@ -89,7 +89,7 @@ void Matrix::setColumn(int col, double x, double y, double z, double w)
 }
 
 
-Matrix Matrix::times(double s)  /* scalar times Matrix */
+Matrix Matrix::times(float s)  /* scalar times Matrix */
 {
    return Matrix( v1.times(s), v2.times(s), v3.times(s), v4.times(s));
 }

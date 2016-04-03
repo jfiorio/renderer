@@ -1,0 +1,79 @@
+- We must develop techniques for 
+  = multithreaded [triangle] list manipulation
+  = multithreaded [geometry] allocation
+  
+- Furthermore, any abstractions that implement these multithreaded techniques should be more or less transparent to the abstractions that implement their default single threaded alternatives
+
+- Design should be relatively simple (templates? [Students taking a CS course of this calibur should understand Java generics, so -simple- C++ templates should be an easy concept to grasp-thus we are enabled to use them where they are absolutely essential])
+
+--------------------------
+- Scene should be able to 
+  = add triangles
+  = remove triangles
+  
+  - These operations will be the responsibilty of a member that is the triangle specialization of a generic single-threaded [singly-linked] list abstraction. Such an abstraction will also track the list size as items (triangles) are added and removed.
+  
+- Our generic list class will implement the following:
+
+  - append item to list (at tail)
+  - insert item into list (at item)
+  - remove item from list 
+  
+  - divide list into n new sub-lists
+    - option for copy or no copy
+  - merge n sub-lists into a new list
+    - option for copy or no copy
+    
+- Traversal of the triangle list, and its potential manipulation, are the responsibilities of a pipeline stage. Each pipeline stage is fed the current 'Context', which consists of
+  - The scene to manipulate
+  - The framebuffer output
+  - A list of triangles in the scene to transform and/or manipulate
+  - Triangle, Fragment, and etc. "Pools" *
+  
+  * pools will be used for geometry allocation, also a responsibility of some pipeline stages
+  
+- The scene initially provides its list of triangles and (reasonably sized?) pools from which to allocate triangles, fragments, (and etc??).
+  [It is not uncommon in graphics code for some function to accept, as an argument, a reference to a pre-allocated block of memory that it can use to fill with primitives.]
+  
+- A multithreaded pipeline schedules the processing of separate jobs for each of n threads. Each job includes a context that references a(n) [evenly divided] portion of triangles in the scene and its own pools for each type of primitive. Each thread processes its scheduled job's context through the pipeline stages, possibly manipulating an independent portion of the scene's triangle list and/or allocating primitives from an independent pool (both provided in the context). As a result, the pipeline stages operate concurrently and independently of one another (until synchronization), avoiding race conditions without the need for mutual exclusion.
+
+  = Thus, the multithreaded pipeline is responsible for
+    
+    - Dividing/distributing triangles in the Scene amongst contexts/jobs (assigned to threads)
+      - Triangle division takes place at the following times:
+        - 1) Before the first stage
+        - 2) After any stage that modifies the arrangement of triangles in the Scene
+        - 3) Before a stage for which processing time is dependent on a factor that is largely independent of the number of triangles
+        = Triangle divsion is typically done at 1) such that all Triangles initially in the Scene are evenly distributed amongst contexts/threads/jobs. This is done because a thread's job to process its context through first stage [typically] takes processing time that is a constant multiple of the number of triangles [in the context]. With a(n) [roughly] equal number of Triangles assigned to each thread, the threads then are expected to complete the first stage in the same amount of time.
+        = The division done at 2) is more approriately considered a "redistribution" of the Triangles: if some stage modifies the arrangement of triangles for each thread/context, which includes adding or removing triangles from their part of the list, then it is expected that triangles will no longer be evenly distributed amongst threads/contexts after that stage. We expect that subsequent stages will run in time that is a multiple of the number of triangles [in the context]. Therefore an uneven distribution of triangles will result in an unbalanced workload for these stages. Thus, we perform the following in redistributing:
+          - wait for each thread to complete the [modifying] stage
+          - merge the resulting lists into what would represent the Scene's triangle list
+          - divide the representative Scene triangle list into n new lists
+          - reset the lists in the corresponding contexts to these lists  
+          - continue the jobs
+        = The division done at 3) is also more appropriately considered a "redistribution" of the Triangles, but it is not an "even" redistribution (in terms of the triangles themselves). We expect the stages that perform subsequent processing at this point to run in time that is NOT a multiple of the number of triangles in a context. Thus, the "evenness" of this redistribution is dependent on some other factor, intrinsic to the triangles, that determines the run time of these stages. As an example, some stages process each fragment in each triangle-thus, their runtime is largely dependent on the cumulative number of fragments between triangles rather than just the number of triangles. If we iteratively minimize the cumulative number of fragments belonging to triangles in n groups, appending triangles from the Scene's list always to the "minimum group", we will have effectively redistributed the triangles into groups that the n threads can spend a roughly equal amount of time processing.
+    
+    - Dividing pools in the Scene amongst contexts/jobs (assigned to threads)
+      - Pool division takes place when the pipeline is instantiated
+        - Each thread should get equal portions of each requested pool
+      
+    - Scheduling jobs to threads and managing their synchronized execution
+    
+- The above also requires a generic Pool class that will implement the following:
+  - allocate a list of items (as a block)
+  - delete a list of items (as a block, put back in free list)
+  - allocate a single item
+  - delete a single item
+  
+  - subdivide into smaller sub-pools
+  
+  
+==================================================
+
+Should lists consist of nodes that are concatenations of a link member and the generic type? Or should each
+node encapsulate a pointer to its generic type? (2nd option is arguably slower)
+
+Should pool just subclass list? 
+
+Pool IS-A (statically allocated) (reservable) (list of items)
+List IS-A (pointer to) (list of items)

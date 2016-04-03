@@ -5,16 +5,17 @@
 #     set DEBUG=-D DEBUG
 # to pass extra C Preprocessor macros to the compiler.
 #
-CPP = C:\cs45500\MinGW32\bin\g++.exe
-CPPFLAGS = -pipe -Wall -I../gl
-LIBS = -lopengl32 -lglu32 -lglut32
+CPP = g++
+CPPFLAGS = -pipe -Wall -I../gl -std=c++11 -mavx -march=corei7-avx -Ofast
+LIBS = -lopengl32 -lglu32 -lfreeglut
 OBJ  = GLUTCallbacks.o GLUTMouseCallbacks.o MazeParser.o mainMaze.o
 OBJ1 = SceneLib.o
 OBJ2 = SceneRenderLib.o
 OBJ3 = SceneRenderOpenGlLib.o
 BIN  = mainMaze.exe
-MAKE = C:\cs45500\MinGW32\bin\mingw32-make.exe
+MAKE = make
 RM = cmd /c del
+DEBUG = -g
 
 .PHONY: all clean
 

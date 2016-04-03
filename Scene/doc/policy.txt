@@ -1,0 +1,24 @@
+//
+// If a single subclass implements all of these requirements and keeps an value or identifier 
+// corresponding to its specialization of the list type, then a run-time check would be needed 
+// for every selective operation. On the other hand, we could create 9 classes satisifying the
+// 9 permutations of requirements and avoid any run-time checks by using the appropriate class;
+// however, this requires a lot of repetitous and redundant code. Furthermore, as the number
+// of requirements increase, the number of permutations increases exponentially, requiring 
+// much more redundant code for implementation. 
+//
+// If we divide the above requirements into groups of dependent list characteristics:
+//   - storage?: none, static, dynamic
+//   - operation?: none, manipulate, allocate
+// we can create a template class for each group, and multiple specializations of 
+// each class for each unique characteristic. The specialization can be determined
+// by a non-type argument of characteristic enumeration type in the template arguments.
+// We call each non-specialized template class a "Policy".
+
+// We can reverse the order of inheritance by making our base or 'host' class inherit from 
+// 2 -generic- policies: a "storage" policy AND an "operation" policy. This means that our 
+// host class itself will be a template class with the storage policy type and operation 
+// policy type as non-type arguments, which will determine the respective specializations
+// of policy classes to inherit. Thus, we can choose from up to 9 permutations of types for 
+// an arbitrary list by simply specifying the policy types (enum values) in the template 
+// arguments.

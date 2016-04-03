@@ -65,7 +65,7 @@ Texture::Texture(char * filename)
    //fprintf(stderr, "Texture %s has rgb dimensions rgbSize = %d\n", filename, rgbSize);
 
    /* make room for the data array */
-   data = (unsigned char *)malloc(sizeof(unsigned char) * width * height * 3);
+   data = (unsigned char *)malloc(sizeof(unsigned char) * width * height * 4);
    if (!data)
    {
       fprintf(stderr, "ERROR! Unable to allocate memory for texture %s\n", filename);
@@ -74,6 +74,8 @@ Texture::Texture(char * filename)
    }
    //fprintf(stderr, "Allocated %d bytes for texture %s\n", 3*width*height, filename);
 
+   unsigned char *temp = (unsigned char *)malloc(sizeof(unsigned char) * width * height * 3);
+   
    /* Eat line feeds */
    while (fgetc(fp) != '\n') ;
 
@@ -82,13 +84,26 @@ Texture::Texture(char * filename)
    {  /* read one row of pixels at a time,
          store them from the bottom row of the data buffer
          up towards the top row */
-      if (fread(data+((height-i-1)*3*width), 3 * width, 1, fp) != 1)
+      if (fread(temp+((height-i-1)*3*width), 3 * width, 1, fp) != 1)
       {
          fprintf(stderr, "ERROR! Could not load texture %s\n", filename);
          fflush(stderr);
          exit(-1);
       }
    }
+   
+   for (i = 0; i < height; i++)
+   {
+     for (int j = 0; j < width; j++)
+     {
+       data[(i*width*4)+(j*4)+0] = temp[(i*width*3)+(j*3)+0];
+       data[(i*width*4)+(j*4)+1] = temp[(i*width*3)+(j*3)+1];
+       data[(i*width*4)+(j*4)+2] = temp[(i*width*3)+(j*3)+2];
+       data[(i*width*4)+(j*4)+3] = 0;
+     }
+   }
+   
+   free(temp);
    //fprintf(stderr, "Loaded texture %s\n", filename);
 
 

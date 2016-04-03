@@ -1,2 +1,2 @@
-del P1_Model2World.o P2_World2View.o P3_BackFaceCulling.o P4_Lighting.o P5_View2Clip.o P6_Clipping.o P6_ClippingSimple.o P7_Clip2NDC.o P8_NDC2VP.o P8_Switch2OpenGL.o P9_Rasterize.o P10_FragmentShader.o P10_FragmentShaderTexture.o P11_Fragments2FB.o FrameBuffer.o SceneRender.o
+del P1_Model2World.o P2_World2View.o P3_BackFaceCulling.o P4_Lighting.o P5_View2Clip.o P6_Clipping.o P6_ClippingSimple.o P7_Clip2NDC.o P8_NDC2VP.o P8_Switch2OpenGL.o P9_Rasterize.o P10_FragmentShader.o P10_FragmentShaderTexture.o P11_Fragments2FB.o FrameBuffer.o SceneRender.o Context.o Pipeline.o PipelineJob.o PipelineMultithreaded.o PipelineStage.o Thread.o
 del SceneRenderLib.o "%DESTFOLDER%\SceneRenderLib.o"

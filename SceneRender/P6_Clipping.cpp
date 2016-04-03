@@ -1,13 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include "SceneLib.h"
+#include "P6_Clipping.h"
+#include <new>
 
-void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, int eqn_number);
-void interpolateNewTriangle(Vertex* v0_in, Vertex* v1_out, Vertex* v2_out, Triangle* tp, Scene* s, int);
-void interpolateNewTriangles(Vertex* v0_out, Vertex* v1_in, Vertex* v2_in, Triangle* tp, Scene* s, int);
+P6_Clipping::P6_Clipping() : PipelineStage()
+{
+  // This stage reads vertex positions
+  // and modifies the arrangement of triangles
+  attributes |= (STAGE_ATTRIB_READ_VERTEX_POSITION | STAGE_ATTRIB_WRITE_TRIANGLE_LIST);
+}
 
-void P6_Clipping(Scene* scene)
+void P6_Clipping::processTriangles(Context *context)
 {
    // Walk the list of Triangle objects and clip
    // the triangles so that all of their vertices
@@ -17,17 +18,17 @@ void P6_Clipping(Scene* scene)
    // the polygon that results when the sticking out
    // Triangle is clipped.
 
-   TriangleListNode *ptr;  // use this pointer to walk the scene's list of triangles
-   TriangleListNode *previous_ptr;
+   List<Triangle> *triangles = context->triangles;
+   Pool<Triangle> *trianglePool = context->trianglePool;
+   ListNode<Triangle> *prev = &triangles->sentinel;
 
-   previous_ptr = &(scene->head_node);
-
-   for (ptr = (scene->head_node).next;  ptr;  ptr = ptr->next)
+   for (ListNode<Triangle> *ptr = triangles->head; ptr; ptr = ptr->next)
    {
-      Triangle* tp = ptr->t;
-      double w0 = fabs( tp->v[0].w );
-      double w1 = fabs( tp->v[1].w );
-      double w2 = fabs( tp->v[2].w );
+      Triangle* tp = ptr;
+      ptr->trianglePool = trianglePool;
+      float w0 = fabs( tp->v[0].w );
+      float w1 = fabs( tp->v[1].w );
+      float w2 = fabs( tp->v[2].w );
       if ( fabs( tp->v[0].x ) > w0
         || fabs( tp->v[0].y ) > w0
         || fabs( tp->v[0].z ) > w0
@@ -38,9 +39,9 @@ void P6_Clipping(Scene* scene)
         || fabs( tp->v[2].y ) > w2
         || fabs( tp->v[2].z ) > w2 )
       {// need to either delete or clip this triangle
-         double w0 = tp->v[0].w;
-         double w1 = tp->v[1].w;
-         double w2 = tp->v[2].w;
+         float w0 = tp->v[0].w;
+         float w1 = tp->v[1].w;
+         float w2 = tp->v[2].w;
          // first check for trivial delete
          if ( (w0 + tp->v[0].x < 0 && w1 + tp->v[1].x < 0 && w2 + tp->v[2].x < 0)
            || (w0 - tp->v[0].x < 0 && w1 - tp->v[1].x < 0 && w2 - tp->v[2].x < 0)
@@ -54,31 +55,29 @@ void P6_Clipping(Scene* scene)
          }// not trivial delete; the triangle must get clipped
          else if (w0 + tp->v[0].x < 0 || w1 + tp->v[1].x < 0 || w2 + tp->v[2].x < 0)
          {// clip to the x = -1 plane
-//fprintf(stderr, "clip to x = -1\n");
-//fflush(stderr);
             if (w0 + tp->v[0].x < 0 && w1 + tp->v[1].x < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 1 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 1 );
             }
             else if (w0 + tp->v[0].x < 0 && w2 + tp->v[2].x < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 1 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 1 );
             }
             else if (w1 + tp->v[1].x < 0 && w2 + tp->v[2].x < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 1 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 1 );
             }
             else if (w0 + tp->v[0].x < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 1 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 1 );
             }
             else if (w1 + tp->v[1].x < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 1 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 1 );
             }
             else if (w2 + tp->v[2].x < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 1 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 1 );
             }
             else  // should never get here
             {
@@ -88,31 +87,29 @@ void P6_Clipping(Scene* scene)
          }
          else if (w0 - tp->v[0].x < 0 || w1 - tp->v[1].x < 0 || w2 - tp->v[2].x < 0)
          {// clip to the x = +1 plane
-//fprintf(stderr, "clip to x = +1\n");
-//fflush(stderr);
             if (w0 - tp->v[0].x < 0 && w1 - tp->v[1].x < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 2 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 2 );
             }
             else if (w0 - tp->v[0].x < 0 && w2 - tp->v[2].x < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 2 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 2 );
             }
             else if (w1 - tp->v[1].x < 0 && w2 - tp->v[2].x < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 2 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 2 );
             }
             else if (w0 - tp->v[0].x < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 2 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 2 );
             }
             else if (w1 - tp->v[1].x < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 2 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 2 );
             }
             else if (w2 - tp->v[2].x < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 2 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 2 );
             }
             else  // should never get here
             {
@@ -122,31 +119,29 @@ void P6_Clipping(Scene* scene)
          }
          else if (w0 + tp->v[0].y < 0 || w1 + tp->v[1].y < 0 || w2 + tp->v[2].y < 0)
          {// clip to the y = -1 plane
-//fprintf(stderr, "clip to y = -1\n");
-//fflush(stderr);
             if (w0 + tp->v[0].y < 0 && w1 + tp->v[1].y < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 3 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 3 );
             }
             else if (w0 + tp->v[0].y < 0 && w2 + tp->v[2].y < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 3 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 3 );
             }
             else if (w1 + tp->v[1].y < 0 && w2 + tp->v[2].y < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 3 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 3 );
             }
             else if (w0 + tp->v[0].y < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 3 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 3 );
             }
             else if (w1 + tp->v[1].y < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 3 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 3 );
             }
             else if (w2 + tp->v[2].y < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 3 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 3 );
             }
             else  // should never get here
             {
@@ -156,31 +151,29 @@ void P6_Clipping(Scene* scene)
          }
          else if (w0 - tp->v[0].y < 0 || w1 - tp->v[1].y < 0 || w2 - tp->v[2].y < 0)
          {// clip to the y = +1 plane
-//fprintf(stderr, "clip to y = +1\n");
-//fflush(stderr);
             if (w0 - tp->v[0].y < 0 && w1 - tp->v[1].y < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 4 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 4 );
             }
             else if (w0 - tp->v[0].y < 0 && w2 - tp->v[2].y < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 4 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 4 );
             }
             else if (w1 - tp->v[1].y < 0 && w2 - tp->v[2].y < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 4 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 4 );
             }
             else if (w0 - tp->v[0].y < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 4 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 4 );
             }
             else if (w1 - tp->v[1].y < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 4 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 4 );
             }
             else if (w2 - tp->v[2].y < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 4 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 4 );
             }
             else  // should never get here
             {
@@ -190,31 +183,29 @@ void P6_Clipping(Scene* scene)
          }
          else if (w0 + tp->v[0].z < 0 || w1 + tp->v[1].z < 0 || w2 + tp->v[2].z < 0)
          {// clip to the z = -1 plane
-//fprintf(stderr, "clip to z = -1\n");
-//fflush(stderr);
             if (w0 + tp->v[0].z < 0 && w1 + tp->v[1].z < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 5 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 5 );
             }
             else if (w0 + tp->v[0].z < 0 && w2 + tp->v[2].z < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 5 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 5 );
             }
             else if (w1 + tp->v[1].z < 0 && w2 + tp->v[2].z < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 5 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 5 );
             }
             else if (w0 + tp->v[0].z < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 5 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 5 );
             }
             else if (w1 + tp->v[1].z < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 5 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 5 );
             }
             else if (w2 + tp->v[2].z < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 5 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 5 );
             }
             else  // should never get here
             {
@@ -224,31 +215,29 @@ void P6_Clipping(Scene* scene)
          }
          else if (w0 - tp->v[0].z < 0 || w1 - tp->v[1].z < 0 || w2 - tp->v[2].z < 0)
          {// clip to the z = +1 plane
-//fprintf(stderr, "clip to z = +1\n");
-//fflush(stderr);
             if (w0 - tp->v[0].z < 0 && w1 - tp->v[1].z < 0)
             {// create one new Triangle containing previous v[2] and new v[0] and v[1]
-               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 6 );
+               interpolateNewTriangle( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 6 );
             }
             else if (w0 - tp->v[0].z < 0 && w2 - tp->v[2].z < 0)
             {// create one new Triangle containing previous v[1] and new v[0] and v[2]
-               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 6 );
+               interpolateNewTriangle( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 6 );
             }
             else if (w1 - tp->v[1].z < 0 && w2 - tp->v[2].z < 0)
             {// create one new Triangle containing previous v[0] and new v[1] and v[2]
-               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 6 );
+               interpolateNewTriangle( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 6 );
             }
             else if (w0 - tp->v[0].z < 0)
             {// create two new Triangles, niether containing previous v[0]
-               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, scene, 6 );
+               interpolateNewTriangles( &(tp->v[0]), &(tp->v[1]), &(tp->v[2]), tp, context, 6 );
             }
             else if (w1 - tp->v[1].z < 0)
             {// create two new Triangles, niether containing previous v[1]
-               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, scene, 6 );
+               interpolateNewTriangles( &(tp->v[1]), &(tp->v[2]), &(tp->v[0]), tp, context, 6 );
             }
             else if (w2 - tp->v[2].z < 0)
             {// create two new Triangles, niether containing previous v[2]
-               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, scene, 6 );
+               interpolateNewTriangles( &(tp->v[2]), &(tp->v[0]), &(tp->v[1]), tp, context, 6 );
             }
             else  // should never get here
             {
@@ -264,13 +253,11 @@ void P6_Clipping(Scene* scene)
          }
 
          // remove old Triangle from the linked list
-         if (ptr == scene->tail_ptr) scene->tail_ptr = previous_ptr;
-         previous_ptr->next = ptr->next;  // unlink the TriangleListNode object
-         delete ptr->t;   // delete the Triangle object
-         delete ptr;      // delete the TriangleListNode object
-         ptr = previous_ptr;
+         triangles->remove(prev, ptr);
+         trianglePool->reclaimNode(ptr);
+         ptr = prev;
       }
-      previous_ptr = ptr;
+      prev = ptr;
    }// continue with the next triangle
 
    return;
@@ -279,19 +266,17 @@ void P6_Clipping(Scene* scene)
 
 void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, int eqn_number)
 {
-//fprintf(stderr, "create new vertex\n");
-//fflush(stderr);
    // make local copies of several values
-   double vix =  v_inside->x; // "i" for "inside"
-   double viy =  v_inside->y;
-   double viz =  v_inside->z;
-   double viw =  v_inside->w;
-   double vox = v_outside->x; // "o" for "outside"
-   double voy = v_outside->y;
-   double voz = v_outside->z;
-   double vow = v_outside->w;
+   float vix =  v_inside->x; // "i" for "inside"
+   float viy =  v_inside->y;
+   float viz =  v_inside->z;
+   float viw =  v_inside->w;
+   float vox = v_outside->x; // "o" for "outside"
+   float voy = v_outside->y;
+   float voz = v_outside->z;
+   float vow = v_outside->w;
    // interpolate between v_outside and v_inside
-   double t;
+   float t = 0.0;
    if (eqn_number == 1)
       t = -(vow + vox)/( (viw + vix) - (vow + vox) );
    else if (eqn_number == 2)
@@ -305,7 +290,7 @@ void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, in
    else if (eqn_number == 6)
       t = -(vow - voz)/( (viw - viz) - (vow - voz) );
 
-   t = t + .00001;  /* keep the new vertex off the edge!! */
+   t = t + .00001f;  /* keep the new vertex off the edge!! */
 
    // interpolate the coordinates of the new vertex
    v_new->x = (1-t) * vox + t * vix;
@@ -322,20 +307,13 @@ void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, in
    // interpolate the normal vector of the new vertex
    v_new->n = (v_outside->n).times(1-t).plus( (v_inside->n).times(t) );
 
-//fprintf(stderr,"[% .6f % .6f % .6f % .6f]\n", vox, voy, voz, vow);
-//fprintf(stderr, "t = % .6f\n", t);
-//fprintf(stderr,"<% .6f % .6f % .6f % .6f>\n",  v_new->x,  v_new->y,  v_new->z,  v_new->w);
-//fflush(stderr);
-
    return;
 }
 
 
 void interpolateNewTriangle(Vertex * v0_inside, Vertex * v1_outside, Vertex * v2_outside,
-                            Triangle* tp, Scene* scene, int eqn_number)
+                            Triangle* tp, Context *context, int eqn_number)
 {
-//fprintf(stderr, "create one new triangle\n");
-//fflush(stderr);
    // create two new vertices
    Vertex v1_new, v2_new;
 
@@ -345,35 +323,33 @@ void interpolateNewTriangle(Vertex * v0_inside, Vertex * v1_outside, Vertex * v2
    // interpolate a new vertex between v2_outside and v0_inside
    interpolateNewVertex(v2_outside, v0_inside, &v2_new, eqn_number);
 
-   // create a new Triangle
-   Triangle * t_new = new Triangle( v0_inside, &v1_new, &v2_new );
+   // allocate space for and create a new triangle
+   Triangle *t_new = context->trianglePool->allocateNode();
+   t_new = new ((void*)t_new) Triangle( v0_inside, &v1_new, &v2_new ); // placement new
    t_new->tex  = tp->tex;
    t_new->mtrl = tp->mtrl;
-
-   // add the new Triangle to the end of the linked list
-   scene->addTriangle(t_new);
-
-//t_new->print();
+   
+   // place the triangle at the end of the triangle list
+   context->triangles->add(t_new);
 
    return;
 }
 
-
 void interpolateNewTriangles(Vertex * v0_outside, Vertex * v1_inside, Vertex * v2_inside,
-                             Triangle* tp, Scene* scene, int eqn_number)
+                             Triangle* tp, Context *context, int eqn_number)
 {
-//fprintf(stderr, "create two new triangles\n");
-//fflush(stderr);
-//scene->print();
-
+   // allocate space for 2 new triangles 
+   Triangle *t1_new = context->trianglePool->allocateNode();
+   Triangle *t2_new = context->trianglePool->allocateNode();
+   
    // create a new vertex
    Vertex v0_new1;
 
    // interpolate a new vertex between v0_outside and v1_inside
    interpolateNewVertex(v0_outside, v1_inside, &v0_new1, eqn_number);
 
-   // create a new Triangle
-   Triangle *t1_new = new Triangle( &v0_new1, v1_inside, v2_inside );
+   // create the first Triangle
+   t1_new = new ((void*)t1_new) Triangle( &v0_new1, v1_inside, v2_inside );
    t1_new->tex  = tp->tex;
    t1_new->mtrl = tp->mtrl;
 
@@ -383,18 +359,14 @@ void interpolateNewTriangles(Vertex * v0_outside, Vertex * v1_inside, Vertex * v
    // interpolate a new vertex between v0_outside and v2_inside
    interpolateNewVertex(v0_outside, v2_inside, &v0_new2, eqn_number);
 
-   // create another new Triangle
-   Triangle *t2_new = new Triangle( &v0_new1, &v0_new2, v2_inside );
+   // create the second Triangle
+   t2_new = new ((void*)t2_new) Triangle( &v0_new1, &v0_new2, v2_inside );
    t2_new->tex  = tp->tex;
    t2_new->mtrl = tp->mtrl;
-
-   // add the new Triangles to the end of the linked list
-   scene->addTriangle(t1_new);
-   scene->addTriangle(t2_new);
-
-//t1_new->print();
-//t2_new->print();
-//scene->print();
-
+   
+   // place the triangles at the end of the triangle list
+   context->triangles->add(t1_new);
+   context->triangles->add(t2_new);
+   
    return;
 }

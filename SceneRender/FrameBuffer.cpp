@@ -16,6 +16,21 @@
 #include <string.h>
 #include "FrameBuffer.h"
 
+#include <immintrin.h>
+
+FrameBuffer::FrameBuffer()
+{
+   width  = 0;
+   height = 0;
+   vp_ul_x = 0;
+   vp_ul_y = 0;
+   vp_lr_x = 0;
+   vp_lr_y = 0;
+   
+   pixel_buffer = 0;
+   z_buffer = 0;
+}
+ 
 FrameBuffer::FrameBuffer(int w, int h)
 {
    width  = w;
@@ -36,7 +51,7 @@ FrameBuffer::FrameBuffer(int w, int h)
    }
 
    /* allocate the z-buffer (the depth buffer) */
-   z_buffer = (double *)malloc(sizeof(double) * width * height);
+   z_buffer = (float *)malloc(sizeof(float) * width * height);
    if ( ! z_buffer )
    {
       fprintf(stderr, "ERROR! Unable to allocate memory for z-buffer\n");
@@ -74,31 +89,39 @@ int FrameBuffer::getHeightFB()
 /* clear the framebuffer (set a background color) and the z-buffer */
 void FrameBuffer::clearFB(unsigned char r, unsigned char g, unsigned char b)
 {
-   for (int y = 0; y < height; y++)
-   {
-      for (int x = 0; x < width; x++)
-      {
-         unsigned char *index = pixel_buffer + (y*width + x)*3;
-         *(index + 0) = r;
-         *(index + 1) = g;
-         *(index + 2) = b;
-      }
-   }
-   // clear the z-buffer (the depth buffer)
-   clearzFB();
+  
+  int count = (height * width) / 32;
+
+  __m256i rgbrg = _mm256_setr_epi8( r, g, b, r, g, b, r, g, b, r, g, b, r, g, b, r,
+                                    g, b, r, g, b, r, g, b, r, g, b, r, g, b, r, g );
+  __m256i brgbr = _mm256_setr_epi8( b, r, g, b, r, g, b, r, g, b, r, g, b, r, g, b,
+                                    r, g, b, r, g, b, r, g, b, r, g, b, r, g, b, r );
+  __m256i gbrgb = _mm256_setr_epi8( g, b, r, g, b, r, g, b, r, g, b, r, g, b, r, g,
+                                    b, r, g, b, r, g, b, r, g, b, r, g, b, r, g, b );
+
+  
+  __m256i *ptr = (__m256i*)pixel_buffer;
+  for (int i = 0; i < count; i++)
+  {
+    _mm256_storeu_si256(ptr++, rgbrg);
+    _mm256_storeu_si256(ptr++, brgbr);
+    _mm256_storeu_si256(ptr++, gbrgb);
+  }
+  
+  // clear the z-buffer (the depth buffer)
+  clearzFB();
 }
 
+__m256 one = _mm256_set_ps(1, 1, 1, 1, 1, 1, 1, 1);
 
 /* clear the frambuffer's z-buffer (the depth buffer) */
 void FrameBuffer::clearzFB()
 {
-   for (int y = 0; y < height; y++)
-   {
-      for (int x = 0; x < width; x++)
-      {
-         *(z_buffer + y*width + x) = 1.0;
-      }
-   }
+  float *ptr = z_buffer;
+  
+  int count = (height*width) >> 3;
+  for (int i=0; i<count; i++, ptr+=8)
+    _mm256_store_ps(ptr, one);
 }
 
 
@@ -163,16 +186,17 @@ void FrameBuffer::getPixelFB(int x, int y, unsigned char **c)
 
 
 /* get the depth of the pixel with coordinates (x,y) in the framebuffer */
-double FrameBuffer::getDepthFB(int x, int y)
+float FrameBuffer::getDepthFB(int x, int y)
 {
    return *(z_buffer + y*width + x);
 }
 
 
 /* set the color and depth of the pixel with coordinates (x,y) in the framebuffer */
-void FrameBuffer::setPixelFB(int x, int y, unsigned char *c, double z)
+void FrameBuffer::setPixelFB(int x, int y, unsigned char *c, float z)
 {
    unsigned char *p = pixel_buffer + (y*width + x)*3;
+   
    p[0] = c[0];
    p[1] = c[1];
    p[2] = c[2];
@@ -191,23 +215,28 @@ void FrameBuffer::getPixelVP(int x, int y, unsigned char **c)
 
 
 /* get the depth of the pixel with coordinates (x,y) relative to the current viewport */
-double FrameBuffer::getDepthVP(int x, int y)
+float FrameBuffer::getDepthVP(int x, int y)
 {
    return *(z_buffer + (vp_ul_y + y)*width + vp_ul_x + x);  /* ???????????????? */
 }
 
-
 /* set the color and depth of the pixel with coordinates (x,y) relative to the current viewport */
-void FrameBuffer::setPixelVP(int x, int y, unsigned char *c, double z)
-{
-   unsigned char *p = pixel_buffer + ((vp_ul_y + y)*width + vp_ul_x + x)*3;
-   p[0] = c[0];
-   p[1] = c[1];
-   p[2] = c[2];
 
-   *(z_buffer + (vp_ul_y + y)*width + vp_ul_x + x) = z;  /* ????????????????????? */
-   return;
-}
+//void FrameBuffer::setPixelVP(int x, int y, int pixel/*unsigned char *c*/, float z)
+//{
+//  int offset = (vp_ul_y + y)*width + vp_ul_x + x;
+//   unsigned char *p = pixel_buffer + offset*3;
+//   // p[0] = c[0];
+//   // p[1] = c[1];
+//   // p[2] = c[2];
+//   *(unsigned int*)(p) = (pixel) | (p[3] << 24);
+//   
+//   //tmp = _mm_set1_pi8(128);
+//   //_m_maskmovq(tmp, maskb, (char*)p);
+//
+//   *(z_buffer + offset) = z;  /* ????????????????????? */
+//   return;
+//}
 
 
 /* write the framebuffer to the specified file. */

@@ -1,51 +1,53 @@
-#include <stdio.h>
-#include <math.h>
-#include "SceneLib.h"
+#include "P4_Lighting.h"
 
-void doSmoothLighting(Scene *scene);
-void doFlatLighting(Scene *scene);
-
-void P4_Lighting(Scene* scene)
+P4_Lighting::P4_Lighting() : PipelineStage()
 {
-   // Walk the list of Triangle objects.
-   // For each Vertex in each Triangle object,
-   // use the Scene's light data, the Triangle's
-   // material properties, and the Vertex's normal
-   // vector to compute color information for that
-   // vertex.
-
-   if (scene->doLighting && scene->light)
-   {
-      if (scene->doSmoothLighting)
-      {
-         doSmoothLighting(scene);
-      }
-      else if (scene->doOpenglFlatLighting != 0)
-      {
-         doSmoothLighting(scene);
-      }
-      else
-      {
-         doFlatLighting(scene);
-      }
-   }
-   return;
+  attributes |= (STAGE_ATTRIB_READ_VERTEX_POSITION | STAGE_ATTRIB_WRITE_VERTEX_COLOR);  
 }
 
-void doSmoothLighting(Scene *scene)
+void P4_Lighting::processTriangles(Context *context)
+{
+  // Walk the list of Triangle objects.
+  // For each Vertex in each Triangle object,
+  // use the Scene's light data, the Triangle's
+  // material properties, and the Vertex's normal
+  // vector to compute color information for that
+  // vertex.
+  
+  Scene *scene = context->scene;
+  List<Triangle> *triangles = context->triangles;
+  if (scene->doLighting && scene->light)
+  {
+    if (scene->doSmoothLighting)
+    {
+      doSmoothLighting(scene, triangles);
+    }
+    else if (scene->doOpenglFlatLighting != 0)
+    {
+      doSmoothLighting(scene, triangles);
+    }
+    else
+    {
+      doFlatLighting(scene, triangles);
+    }
+  }
+  return;
+}
+
+void doSmoothLighting(Scene *scene, List<Triangle> *triangles)
 {
    // Compute the transformation matrix that transforms normal
    // vectors from model coordinates into view coordinates.
    // Get the 3-by-3 part of the model matrix that we need.
-   double m11 = scene->model.v1.x, m12 = scene->model.v2.x, m13 = scene->model.v3.x,
+   float m11 = scene->model.v1.x, m12 = scene->model.v2.x, m13 = scene->model.v3.x,
           m21 = scene->model.v1.y, m22 = scene->model.v2.y, m23 = scene->model.v3.y,
           m31 = scene->model.v1.z, m32 = scene->model.v2.z, m33 = scene->model.v3.z;
    // Get the 3-by-3 part of the view matrix that we need.
-   double v11 = scene->view.v1.x, v12 = scene->view.v2.x, v13 = scene->view.v3.x,
+   float v11 = scene->view.v1.x, v12 = scene->view.v2.x, v13 = scene->view.v3.x,
           v21 = scene->view.v1.y, v22 = scene->view.v2.y, v23 = scene->view.v3.y,
           v31 = scene->view.v1.z, v32 = scene->view.v2.z, v33 = scene->view.v3.z;
    // Compute V*M, the modelview matrix.
-   double mv11 = v11*m11 + v12*m21 + v13*m31,
+   float mv11 = v11*m11 + v12*m21 + v13*m31,
           mv12 = v11*m12 + v12*m22 + v13*m32,
           mv13 = v11*m13 + v12*m23 + v13*m33,
           mv21 = v21*m11 + v22*m21 + v23*m31,
@@ -65,42 +67,41 @@ void doSmoothLighting(Scene *scene)
    Vector col4 = Vector(0.0, 0.0, 0.0, 1.0);
    Matrix MVInvTranspose = Matrix(col1, col2, col3, col4);
 
-   TriangleListNode *ptr;
-   for (ptr = (scene->head_node).next;  ptr && ptr->t->mtrl;  ptr = ptr->next)
+   for (ListNode<Triangle> *ptr = triangles->head; ptr && ptr->mtrl; ptr = ptr->next)
    {
       // Get all of the values that we need.
-      double s = ptr->t->mtrl->s; //shininess coefficient
-      double kar = ptr->t->mtrl->ambient[0];  // red
-      double kdr = ptr->t->mtrl->diffuse[0];
-      double ksr = ptr->t->mtrl->specular[0];
-      double car = scene->light->ambient[0];
-      double cdr = scene->light->diffuse[0];
-      double csr = scene->light->specular[0];
-      double kag = ptr->t->mtrl->ambient[1];  // green
-      double kdg = ptr->t->mtrl->diffuse[1];
-      double ksg = ptr->t->mtrl->specular[1];
-      double cag = scene->light->ambient[1];
-      double cdg = scene->light->diffuse[1];
-      double csg = scene->light->specular[1];
-      double kab = ptr->t->mtrl->ambient[2];  // blue
-      double kdb = ptr->t->mtrl->diffuse[2];
-      double ksb = ptr->t->mtrl->specular[2];
-      double cab = scene->light->ambient[2];
-      double cdb = scene->light->diffuse[2];
-      double csb = scene->light->specular[2];
+      float s = ptr->mtrl->s; //shininess coefficient
+      float kar = ptr->mtrl->ambient[0];  // red
+      float kdr = ptr->mtrl->diffuse[0];
+      float ksr = ptr->mtrl->specular[0];
+      float car = scene->light->ambient[0];
+      float cdr = scene->light->diffuse[0];
+      float csr = scene->light->specular[0];
+      float kag = ptr->mtrl->ambient[1];  // green
+      float kdg = ptr->mtrl->diffuse[1];
+      float ksg = ptr->mtrl->specular[1];
+      float cag = scene->light->ambient[1];
+      float cdg = scene->light->diffuse[1];
+      float csg = scene->light->specular[1];
+      float kab = ptr->mtrl->ambient[2];  // blue
+      float kdb = ptr->mtrl->diffuse[2];
+      float ksb = ptr->mtrl->specular[2];
+      float cab = scene->light->ambient[2];
+      float cdb = scene->light->diffuse[2];
+      float csb = scene->light->specular[2];
 
       // Do the calculation at vertex v[0].
 
       // To do vector algebra, we need the vertex as a vector.
-      Vector p = Vector(ptr->t->v[0].x, ptr->t->v[0].y, ptr->t->v[0].z);
+      Vector p = Vector(ptr->v[0].x, ptr->v[0].y, ptr->v[0].z);
       // We need the normal vector at this vertex.
       // Here is this vertex's normal vector in model(!) coordinates.
-      Vector N = ptr->t->v[0].n;
+      Vector N = ptr->v[0].n;
       // We need to convert this normal vector into view coordinates.
       N = MVInvTranspose.times( N );
       N = N.normalize();
       // Put this normal vector into the vertex (for debugging purposes).
-      ptr->t->v[0].n = N;
+      ptr->v[0].n = N;
       // We need the unit light vector, L, from our vertex to the light source.
       // Here is the light source as a vertex in world coordinates.
       Vertex S = Vertex(scene->light->pos);
@@ -126,9 +127,9 @@ void doSmoothLighting(Scene *scene)
       //    c = k_a * c_a + sum_{all lights}( k_d*c_d*(L dot N) + k_s*c_s*(N dot H)^s ) )
 
       // precompute some numbers
-      double diffuseAngle = L.dotProduct(N);
+      float diffuseAngle = L.dotProduct(N);
       diffuseAngle = (diffuseAngle < 0) ? 0.0 : diffuseAngle;
-      double shininess;
+      float shininess;
       if (scene->useHalfVector)
       {
          shininess = N.dotProduct(H);
@@ -140,45 +141,45 @@ void doSmoothLighting(Scene *scene)
       shininess = (shininess < 0) ? 0.0 : pow(shininess, s);
 
       // do red
-      double r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
+      float r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].r = r;
+      ptr->v[0].r = r;
 
       // do green
-      double g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
+      float g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].g = g;
+      ptr->v[0].g = g;
 
       // do blue
-      double b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
+      float b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].b = b;
+      ptr->v[0].b = b;
 
       if ( !(scene->doSmoothLighting) && (scene->doOpenglFlatLighting==1) )
       {  /* Do OpenGL style flat lighting. */
          /* Copy the lighting information from vertex v[0]
             to the other two vertices, v[1] and v[2]. */
-         ptr->t->v[1].r = r;
-         ptr->t->v[1].g = g;
-         ptr->t->v[1].b = b;
-         ptr->t->v[2].r = r;
-         ptr->t->v[2].g = g;
-         ptr->t->v[2].b = b;
+         ptr->v[1].r = r;
+         ptr->v[1].g = g;
+         ptr->v[1].b = b;
+         ptr->v[2].r = r;
+         ptr->v[2].g = g;
+         ptr->v[2].b = b;
          continue; /* ugly, ugly, ugly */
       }
 
       // Do the calculation at vertex v[1].
 
       // To do vector algebra, we need the vertex as a vector.
-      p = Vector(ptr->t->v[1].x, ptr->t->v[1].y, ptr->t->v[1].z);
+      p = Vector(ptr->v[1].x, ptr->v[1].y, ptr->v[1].z);
       // We need the normal vector at this vertex.
       // Here is this vertex's normal vector in model(!) coordinates.
-      N = ptr->t->v[1].n;
+      N = ptr->v[1].n;
       // We need to convert this normal vector into view coordinates.
       N = MVInvTranspose.times( N );
       N = N.normalize();
       // Put this normal vector into the vertex (for debugging purposes).
-      ptr->t->v[1].n = N;
+      ptr->v[1].n = N;
       // We need the unit light vector, L, from our vertex to the light source.
       // Compute L = S2 - p, the vector from our vertex to the light source.
       L = S2.plus( p.times(-1.0) );
@@ -212,43 +213,43 @@ void doSmoothLighting(Scene *scene)
       // do red
       r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[1].r = r;
+      ptr->v[1].r = r;
 
       // do green
       g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[1].g = g;
+      ptr->v[1].g = g;
 
       // do blue
       b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[1].b = b;
+      ptr->v[1].b = b;
 
       if ( !(scene->doSmoothLighting) && (scene->doOpenglFlatLighting==2) )
       {  /* Do OpenGL style flat lighting. */
          /* Copy the lighting information from vertex v[1]
             to the other two vertices, v[0] and v[2]. */
-         ptr->t->v[0].r = r;
-         ptr->t->v[0].g = g;
-         ptr->t->v[0].b = b;
-         ptr->t->v[2].r = r;
-         ptr->t->v[2].g = g;
-         ptr->t->v[2].b = b;
+         ptr->v[0].r = r;
+         ptr->v[0].g = g;
+         ptr->v[0].b = b;
+         ptr->v[2].r = r;
+         ptr->v[2].g = g;
+         ptr->v[2].b = b;
          continue; /* ugly, ugly, ugly */
       }
 
       // Do the calculation at vertex v[2].
 
       // To do vector algebra, we need the vertex as a vector.
-      p = Vector(ptr->t->v[2].x, ptr->t->v[2].y, ptr->t->v[2].z);
+      p = Vector(ptr->v[2].x, ptr->v[2].y, ptr->v[2].z);
       // We need the normal vector at this vertex.
       // Here is this vertex's normal vector in model(!) coordinates.
-      N = ptr->t->v[2].n;
+      N = ptr->v[2].n;
       // We need to convert this normal vector into view coordinates.
       N = MVInvTranspose.times( N );
       N = N.normalize();
       // Put this normal vector into the vertex (for debugging purposes).
-      ptr->t->v[2].n = N;
+      ptr->v[2].n = N;
       // We need the unit light vector, L, from our vertex to the light source.
       // Compute L = S2 - p, the vector from our vertex to the light source.
       L = S2.plus( p.times(-1.0) );
@@ -282,28 +283,28 @@ void doSmoothLighting(Scene *scene)
       // do red
       r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[2].r = r;
+      ptr->v[2].r = r;
 
       // do green
       g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[2].g = g;
+      ptr->v[2].g = g;
 
       // do blue
       b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[2].b = b;
+      ptr->v[2].b = b;
 
       if ( !(scene->doSmoothLighting) && (scene->doOpenglFlatLighting==3) )
       {  /* Do OpenGL style flat lighting. */
          /* Copy the lighting information from vertex v[2]
             to the other two vertices, v[0] and v[1]. */
-         ptr->t->v[0].r = r;
-         ptr->t->v[0].g = g;
-         ptr->t->v[0].b = b;
-         ptr->t->v[1].r = r;
-         ptr->t->v[1].g = g;
-         ptr->t->v[1].b = b;
+         ptr->v[0].r = r;
+         ptr->v[0].g = g;
+         ptr->v[0].b = b;
+         ptr->v[1].r = r;
+         ptr->v[1].g = g;
+         ptr->v[1].b = b;
          //continue; /* ugly, ugly, ugly */
       }
    }
@@ -311,10 +312,9 @@ void doSmoothLighting(Scene *scene)
 }
 
 
-void doFlatLighting(Scene *scene)
+void doFlatLighting(Scene *scene, List<Triangle> *triangles)
 {
-   TriangleListNode *ptr;
-   for (ptr = (scene->head_node).next;  ptr && ptr->t->mtrl;  ptr = ptr->next)
+   for (ListNode<Triangle> *ptr = triangles->head; ptr && ptr->mtrl; ptr = ptr->next)
    {
       // Compute a normal vector, N, for this triangle. We need to be carefull
       // that the normal vector has the right "orientation". We want the normal
@@ -323,16 +323,16 @@ void doFlatLighting(Scene *scene)
       // with P3_BackFaceCulling.cpp. Another way to put this is that for a
       // closed surface made up of CCW triangles, the normal vector should
       // point outside of the surface.
-      Vector p1 = Vector(ptr->t->v[1].x - ptr->t->v[0].x,
-                         ptr->t->v[1].y - ptr->t->v[0].y,
-                         ptr->t->v[1].z - ptr->t->v[0].z);
-      Vector p2 = Vector(ptr->t->v[2].x - ptr->t->v[0].x,
-                         ptr->t->v[2].y - ptr->t->v[0].y,
-                         ptr->t->v[2].z - ptr->t->v[0].z);
+      Vector p1 = Vector(ptr->v[1].x - ptr->v[0].x,
+                         ptr->v[1].y - ptr->v[0].y,
+                         ptr->v[1].z - ptr->v[0].z);
+      Vector p2 = Vector(ptr->v[2].x - ptr->v[0].x,
+                         ptr->v[2].y - ptr->v[0].y,
+                         ptr->v[2].z - ptr->v[0].z);
       Vector N = p1.crossProduct(p2);
       N = N.normalize();
 
-      Vector p0 = Vector(ptr->t->v[0].x, ptr->t->v[0].y, ptr->t->v[0].z);
+      Vector p0 = Vector(ptr->v[0].x, ptr->v[0].y, ptr->v[0].z);
 
       // p = p0 + (v1-v0)/3 + (v2-v0)/3 is our center (position) vector for this triangle.
       Vector p = p0.plus( p1.times(1.0/3.0).plus(p2.times(1.0/3.0)) );
@@ -376,10 +376,10 @@ void doFlatLighting(Scene *scene)
       //    c = k_a * c_a + sum_{all lights}( k_d*c_d*(L dot N) + k_s*c_s*(N dot H)^s ) )
 
       // precompute some numbers
-      double s = ptr->t->mtrl->s; //shininess coefficient
-      double diffuseAngle = L.dotProduct(N);
+      float s = ptr->mtrl->s; //shininess coefficient
+      float diffuseAngle = L.dotProduct(N);
       diffuseAngle = (diffuseAngle < 0) ? 0.0 : diffuseAngle;
-      double shininess;
+      float shininess;
       if (scene->useHalfVector)
       {
          shininess = N.dotProduct(H);
@@ -391,44 +391,44 @@ void doFlatLighting(Scene *scene)
       shininess = (shininess < 0) ? 0.0 : pow(shininess, s);
 
       // do red
-      double kar = ptr->t->mtrl->ambient[0];
-      double kdr = ptr->t->mtrl->diffuse[0];
-      double ksr = ptr->t->mtrl->specular[0];
-      double car = scene->light->ambient[0];
-      double cdr = scene->light->diffuse[0];
-      double csr = scene->light->specular[0];
-      double r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
+      float kar = ptr->mtrl->ambient[0];
+      float kdr = ptr->mtrl->diffuse[0];
+      float ksr = ptr->mtrl->specular[0];
+      float car = scene->light->ambient[0];
+      float cdr = scene->light->diffuse[0];
+      float csr = scene->light->specular[0];
+      float r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].r = r;
-      ptr->t->v[1].r = r;
-      ptr->t->v[2].r = r;
+      ptr->v[0].r = r;
+      ptr->v[1].r = r;
+      ptr->v[2].r = r;
 
 
       // do green
-      double kag = ptr->t->mtrl->ambient[1];
-      double kdg = ptr->t->mtrl->diffuse[1];
-      double ksg = ptr->t->mtrl->specular[1];
-      double cag = scene->light->ambient[1];
-      double cdg = scene->light->diffuse[1];
-      double csg = scene->light->specular[1];
-      double g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
+      float kag = ptr->mtrl->ambient[1];
+      float kdg = ptr->mtrl->diffuse[1];
+      float ksg = ptr->mtrl->specular[1];
+      float cag = scene->light->ambient[1];
+      float cdg = scene->light->diffuse[1];
+      float csg = scene->light->specular[1];
+      float g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].g = g;
-      ptr->t->v[1].g = g;
-      ptr->t->v[2].g = g;
+      ptr->v[0].g = g;
+      ptr->v[1].g = g;
+      ptr->v[2].g = g;
 
       // do blue
-      double kab = ptr->t->mtrl->ambient[2];
-      double kdb = ptr->t->mtrl->diffuse[2];
-      double ksb = ptr->t->mtrl->specular[2];
-      double cab = scene->light->ambient[2];
-      double cdb = scene->light->diffuse[2];
-      double csb = scene->light->specular[2];
-      double b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
+      float kab = ptr->mtrl->ambient[2];
+      float kdb = ptr->mtrl->diffuse[2];
+      float ksb = ptr->mtrl->specular[2];
+      float cab = scene->light->ambient[2];
+      float cdb = scene->light->diffuse[2];
+      float csb = scene->light->specular[2];
+      float b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
-      ptr->t->v[0].b = b;
-      ptr->t->v[1].b = b;
-      ptr->t->v[2].b = b;
+      ptr->v[0].b = b;
+      ptr->v[1].b = b;
+      ptr->v[2].b = b;
    }
    return;
 }

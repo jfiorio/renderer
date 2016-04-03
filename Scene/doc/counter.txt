@@ -1,0 +1,121 @@
+Compilation state changes, for example, every time the compiler discovers 
+the definition of an previously undefined function-that is, the function 
+goes from being "undefined" to "defined". 
+
+Now, suppose a function is used in the expression for a function template 
+argument default (for an overload of some other function): 
+
+- Should the function not be defined, template parameter substitution will 
+  fail for the other function-which then as an overload will be discarded. An 
+  ambiguous call (or evaluation) of the other function will thus result in 
+  some other overload being chosen. 
+- Should the function be defined, template parameter substitution will 
+  succeed for [the overload of] the other function. Thus, assuming that that 
+  overload is the best candidate, an ambiguous call of the other function 
+  will result in that overload being chosen. 
+                                                                                                                                                 
+Thus, assuming a constant expression is returned by the other function, the 
+value returned by an ambiguous call is entirely dependent on the overload 
+chosen, which as we'd shown, is entirely dependent on whether the function 
+of interest has been defined. The "other" function thus provides us with a 
+way of gauging the "defined" state of the function of interest 
+                                                                                                                                                   
+Suppose that we now have M functions, each of which are undefined at 0 
+units of time into compilation and N of which are defined at N units of 
+time into compilation (where functions obviously remain defined once they 
+have been defined and can not be undefined). Regardless of the intervals of 
+time between definition of an N-1th function and an Nth function, all 
+together the "defined" states of these functions represent a counter that 
+can be measured by gauging the states individually and combining the 
+results. The counter is simply then "incremented" at any point when one of 
+the functions not already defined is defined. 
+                                               
+Each of the M functions is a template function with non-type integer 
+parameter N: 
+- the declaration(s) is/are encapsulated as a friend function in a template 
+  struct 'flag' with the same parameter                                                           
+- the definition(s) is/are encapsulated as a friend function in a template 
+  struct 'writer' with the same parameter  
+  
+The function signature/declaration specifies that a type argument of type 
+flag<N> is required so that the parent struct template parameters can be 
+deduced in a direct call to the (friend) function from a local scope 
+
+                                                                                                                                                                    
+The first use of the Nth writer is always preceded by its instantiation, 
+which includes: 
+
+- the definition of the Nth function (the Nth function is "defined" after 
+  that point), since that definition is encapsulated by that writer                                     
+- the evaluation of the constant value that represents the counter at that 
+  point (also encapsulated by that writer) which is undoubtedly, N, since 
+  (N-1) functions before that plus 1 (N-1+1=N) additional function have been 
+  defined at that point 
+                                                                             
+"Incrementing the counter" from a representative value of N-1 to N at some 
+point during compilation, as previously mentioned, thus involves defining 
+one of the M-N+1 functions that have not yet been defined at that point, 
+which requires the use and thus instantiation of any one of the 
+corresponding M-N+1 writers. Assuming that [in all cases/for all N from 1 
+to M], N-1 functions have been defined immediately prior to the increment 
+(which would thus represent a counter value of N-1), if the ((N-1)+1)th 
+(i.e. Nth) function/writer in particular is then defined, the "counter will 
+have been incremented". Done in this way, for all N from 1 to M, the Nth 
+writer will never be one that has already been instantiated, so we can 
+always guarantee that a new, previously uninstantiated writer is 
+instantiated. If there is a way to gauge the number of functions already 
+defined/writers already instantiated/current counter value immediately 
+prior to the following increment, and assuming that this value is C, then 
+we need only to instantiate the C+1th writer to increment the counter. 
+Then, we must define a method for gauging this value. 
+                                                                                                                                        
+The "other" function as explained above thus serves as the gauging 
+function. It is called the "reader" function and it has 3 overloads. It is 
+also a template function of parameter N and like the writer and flag 
+structs, has M variants. 
+                                                                                 
+- In the first overload (for the Nth variant), the Nth function is used in 
+  the expression for the template argument default for a second argument. 
+  Should that Nth function thus be defined, template parameter substitution 
+  will succeed for the [ambiguous] call to/evaluation of the first overload, 
+  which will appropriately return N (which we show, momentarily, represents 
+  the number of functions defined.)                                                                        
+- In the second overload (for the Nth variant), a second argument is not 
+  used. Should the function used in the expression for the second argument 
+  default in the first overload not be defined, template parameter 
+  substitution will fail for the first overload with an ambiguous call and 
+  this overload will be chosen instead. This overload includes a default 3rd 
+  function argument that simultaneously maintains its constness and the 
+  potential ambiguity between the first overload; it evaluates to a recursive 
+  [ambiguous] call/evaluation of the N-1th variant. 
+- The third overload is a specialization for N = 0 (the 0th variant). It is 
+  a base case for the recursion and evaluates to 0.                                                               
+                                                                                                  
+Assume for now that the Mth variant of the reader function always evaluates 
+to the number of functions defined at a given point-we will prove this 
+momentarily. To increment the counter, as stated before, we simply 
+instantiate the C+1th writer-where C represents the [constant] expression 
+returned by the Mth variant of the reader function. Incrementing the 
+counter and returning the [constant expression] result is then done by 
+simply returning the "value" field of the C+1th writer (the writer is 
+implicitly instantiated prior to a member access). 
+                                                                                                 
+Now we show that the Mth variant of the reader function always evaluates to 
+the number of functions defined at a given point. 
+                                
+Proof: If the Mth function is undefined, then the second overload of the 
+Mth variant is chosen, which evaluates to the value of the M-1th variant. 
+In general, as long as the Lth function is undefined for each L from M down 
+to some N, the Lth variant evaluates to the value of the L-1th variant 
+because the second overload is chosen. Assuming that the Nth function is 
+defined, the Mth variant will take the value of the M-1th variant, and 
+consequently the M-2th variant, etc., the N+1th variant, and thus the Nth 
+variant. Since the Nth function is defined, the Nth variant should 
+supposedly then return the number of functions defined-and furthermore, it 
+must: because either N=0 or after the previous gauging of N-1 functions, 
+the Nth writer was instantiated with the value N that the Nth variant now 
+returns, and for this to be possible there must have been prior gaugings of 
+0 functions followed by the instantiation of the first writer, and 
+generally K-1 functions followed by the instantiation of the Kth writer for 
+K from 1 to N (including the current), and thus N definitions. 
+

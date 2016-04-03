@@ -12,26 +12,26 @@ void P10_FragmentShader(Scene* scene)
    {
       // For this triangle, get the color information
       // from each of the three vertices.
-      double r0 = ptr->t->v[0].r;
-      double g0 = ptr->t->v[0].g;
-      double b0 = ptr->t->v[0].b;
-      double a0 = ptr->t->v[0].a;
-      double r1 = ptr->t->v[1].r;
-      double g1 = ptr->t->v[1].g;
-      double b1 = ptr->t->v[1].b;
-      double a1 = ptr->t->v[1].a;
-      double r2 = ptr->t->v[2].r;
-      double g2 = ptr->t->v[2].g;
-      double b2 = ptr->t->v[2].b;
-      double a2 = ptr->t->v[2].a;
+      float r0 = ptr->t->v[0].r;
+      float g0 = ptr->t->v[0].g;
+      float b0 = ptr->t->v[0].b;
+      float a0 = ptr->t->v[0].a;
+      float r1 = ptr->t->v[1].r;
+      float g1 = ptr->t->v[1].g;
+      float b1 = ptr->t->v[1].b;
+      float a1 = ptr->t->v[1].a;
+      float r2 = ptr->t->v[2].r;
+      float g2 = ptr->t->v[2].g;
+      float b2 = ptr->t->v[2].b;
+      float a2 = ptr->t->v[2].a;
 
       // Walk this triangle's list of fragments.
       for (Fragment *fptr = ptr->t->fragment_p; fptr; fptr = fptr->nextFragment)
       {
          // get this fragment's barycentric coordinates
-         double alpha = fptr->alpha;
-         double beta  = fptr->beta;
-         double gamma = fptr->gamma;
+         float alpha = fptr->alpha;
+         float beta  = fptr->beta;
+         float gamma = fptr->gamma;
 
          //fprintf(stderr, "alpha = %f, beta = %f, gamma = %f\n", alpha,beta,gamma);
 

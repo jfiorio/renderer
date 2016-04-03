@@ -34,12 +34,14 @@ void P6_Clipping(Scene* scene)
            || fabs(ptr->t->v[i].z) > w )
          {
             deleteFlag = true;
+            break;
          }
       }
       if ( deleteFlag )
       {// unlink this triangle
          previous_ptr->next = ptr->next;
-         delete ptr->t;   // delete the Triangle object
+         // delete ptr->t;   // delete the Triangle object
+         scene->removeTriangle(ptr->t);
          delete ptr;      // delete the TriangleListNode object
          ptr = previous_ptr;
       }

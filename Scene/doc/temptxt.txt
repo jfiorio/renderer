@@ -1,0 +1,29 @@
+// problem:
+// when triangles are deleted, which pool do their fragments return to?
+
+// - reserved field for lists that points to their source pool?
+//  = too expensive?
+//  - not at all. issue here is with -fragments- using up RAM, i.e. 
+//    the nodes of the lists. 
+//
+// 0x1400000 fragments = 20971520 fragments; 
+// 20971520  fragments x 72 bytes/fragment = 
+// 1509949440 bytes = 1.34 Gb!!
+// ...
+// First of all: no reason to use 4 doubles for fragment color. We can
+// instead store as a 32 bit color value:
+// 72 bytes/fragment - 8 bytes x 4 color values + (1 byte x 4 color values)
+// = 44 bytes/fragment x 20971520 fragments = 922746880 bytes = 922.7 Mb
+//
+// This should improve performance of the fragment shader interpolation 
+// and the fragment to framebuffer stages, since 
+// - we don't need a double color table for converting from the int values,
+//   and wont need to do the lookup
+// - we can possibly do the store of r,g,b,a in a single write of the long
+//   representation
+// - no need to multiply by 255 in the fragment to framebuffer stage
+// - we will need the multiplication for the -non textured- gouraud shading/
+//   interpolation but this should not have a significant impact
+
+
+
