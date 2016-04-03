@@ -8,7 +8,7 @@
 Scene::Scene()
 {  
    trianglePool = new Pool<Triangle>(8000);
-   fragmentPool = new Pool<Fragment>(0x1000000); 
+   fragmentPool = new Pool<Fragment>(0x1000000); //17e075
    
    textureCount = 0;
    bilerp_flag = false;
@@ -72,6 +72,8 @@ Scene::Scene(Scene *scene1) /* duplicate a Scene object */
    
 }//duplicating constructor
 
+
+
 Scene::~Scene()
 {
   // !
@@ -107,10 +109,10 @@ void Scene::projMult(Matrix m)
 }
 
 
-void Scene::projPerspective(float fovy, float aspect, float zNear, float zFar)
+void Scene::projPerspective(double fovy, double aspect, double zNear, double zFar)
 {
    /*  http://www.opengl.org/sdk/docs/man/xhtml/gluPerspective.xml  */
-   float f = 1.0/tan((PI/180.0)*fovy/2.0);
+   double f = 1.0/tan((PI/180.0)*fovy/2.0);
    projection = projection.times(Matrix(Vector(f/aspect, 0.0, 0.0, 0.0),
                                         Vector(0.0, f, 0.0, 0.0),
                                         Vector(0.0, 0.0, (zFar+zNear)/(zNear-zFar), -1.0),
@@ -119,13 +121,13 @@ void Scene::projPerspective(float fovy, float aspect, float zNear, float zFar)
 }
 
 
-void Scene::projFrustum(float left, float right, float bottom, float top, float near, float far)
+void Scene::projFrustum(double left, double right, double bottom, double top, double near, double far)
 {
    /*  http://www.opengl.org/sdk/docs/man/xhtml/glFrustum.xml  */
-   float A = (right+left)/(right-left);
-   float B = (top+bottom)/(top-bottom);
-   float C =   (far+near)/(far-near);
-   float D = (2*far*near)/(far-near);
+   double A = (right+left)/(right-left);
+   double B = (top+bottom)/(top-bottom);
+   double C =   (far+near)/(far-near);
+   double D = (2*far*near)/(far-near);
    projection = projection.times(Matrix(Vector((2.0*near)/(right-left), 0.0, 0.0, 0.0),
                                         Vector(0.0, (2.0*near)/(top-bottom), 0.0, 0.0),
                                         Vector(  A,   B,  C, -1.0),
@@ -134,12 +136,12 @@ void Scene::projFrustum(float left, float right, float bottom, float top, float 
 }
 
 
-void Scene::projOrtho(float left, float right, float bottom, float top, float near, float far)
+void Scene::projOrtho(double left, double right, double bottom, double top, double near, double far)
 {
    /*  http://www.opengl.org/sdk/docs/man/xhtml/glOrtho.xml  */
-   float tx = -(right+left)/(right-left);
-   float ty = -(top+bottom)/(top-bottom);
-   float tz =   -(far+near)/(far-near);
+   double tx = -(right+left)/(right-left);
+   double ty = -(top+bottom)/(top-bottom);
+   double tz =   -(far+near)/(far-near);
    projection = projection.times(Matrix(Vector((2.0)/(right-left), 0.0, 0.0, 0.0),
                                         Vector(0.0, (2.0)/(top-bottom), 0.0, 0.0),
                                         Vector(0.0, 0.0, (-2.0)/(far-near), 0.0),
@@ -155,7 +157,7 @@ void Scene::view2Identity()
 }
 
 
-void Scene::viewLookAt(float eyex, float eyey, float eyez, float centerx, float centery, float centerz, float upx, float upy, float upz)
+void Scene::viewLookAt(double eyex, double eyey, double eyez, double centerx, double centery, double centerz, double upx, double upy, double upz)
 {
    /*  http://www.opengl.org/sdk/docs/man/xhtml/gluLookAt.xml  */
    Vector F  = Vector(centerx - eyex, centery - eyey, centerz - eyez);
@@ -174,14 +176,14 @@ void Scene::viewLookAt(float eyex, float eyey, float eyez, float centerx, float 
 }
 
 
-void Scene::viewRotate(float theta, float x, float y, float z)
+void Scene::viewRotate(double theta, double x, double y, double z)
 {
    view = view.times(Matrix(theta, x, y, z));
    return;
 }
 
 
-void Scene::viewTranslate(float x, float y, float z)
+void Scene::viewTranslate(double x, double y, double z)
 {
    view = view.times(Matrix(Vector(x, y, z)));
    return;
@@ -202,21 +204,21 @@ void Scene::modelMult(Matrix m)
 }
 
 
-void Scene::modelRotate(float theta, float x, float y, float z)
+void Scene::modelRotate(double theta, double x, double y, double z)
 {
    model = model.times(Matrix(theta, x, y, z));
    return;
 }
 
 
-void Scene::modelScale(float x, float y, float z)
+void Scene::modelScale(double x, double y, double z)
 {
    model = model.times(Matrix(x, y, z));
    return;
 }
 
 
-void Scene::modelTranslate(float x, float y, float z)
+void Scene::modelTranslate(double x, double y, double z)
 {
    model = model.times(Matrix(Vector(x, y, z)));
    return;

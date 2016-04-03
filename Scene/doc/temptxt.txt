@@ -25,5 +25,11 @@
 // - we will need the multiplication for the -non textured- gouraud shading/
 //   interpolation but this should not have a significant impact
 
+//
+// How should the multithreaded pipeline divide a processing context into 
+// sub-contexts for individual jobs that can be processed by individual
+// threads-where the list of triangles to process and the pools used in 
+// that context must be distributed amongst sub-contexts
+
 
 

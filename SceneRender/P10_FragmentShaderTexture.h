@@ -6,6 +6,9 @@
 
 class P10_FragmentShaderTexture : public PipelineStage
 {
+  private:
+  float colors[256];
+  
   public:
   P10_FragmentShaderTexture();
   void processTriangles(Context *context);

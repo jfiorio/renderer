@@ -58,13 +58,13 @@ bool triangleIsCCW(Triangle *t)
    // of the two "edge vectors", v1-v0 and v2-v0. This works
    // because we are in view coordinates, with the camera at
    // the origin looking down the negative z-axis.
-   float x0 = t->v[0].x;
-   float x1 = t->v[1].x;
-   float x2 = t->v[2].x;
-   float y0 = t->v[0].y;
-   float y1 = t->v[1].y;
-   float y2 = t->v[2].y;
-   float zValueOfCrossProduct = (x1-x0)*(y2-y0) - (y1-y0)*(x2-x0);
+   double x0 = t->v[0].x;
+   double x1 = t->v[1].x;
+   double x2 = t->v[2].x;
+   double y0 = t->v[0].y;
+   double y1 = t->v[1].y;
+   double y2 = t->v[2].y;
+   double zValueOfCrossProduct = (x1-x0)*(y2-y0) - (y1-y0)*(x2-x0);
 
    //fprintf(stderr, "zValueOfCrossProduct = % .6f\n", zValueOfCrossProduct);
    //fflush(stderr);
@@ -77,13 +77,13 @@ bool triangleIsCCW(Triangle *t)
 {
    // Here is another way to calculate the exact same thing.
    // Compute the signed area of the triangle projected into the xy-plane.
-   float x0 = t->v[0].x;
-   float x1 = t->v[1].x;
-   float x2 = t->v[2].x;
-   float y0 = t->v[0].y;
-   float y1 = t->v[1].y;
-   float y2 = t->v[2].y;
-   float determinant = (x1-x0)*(y2-y0) - (y1-y0)*(x2-x0);
+   double x0 = t->v[0].x;
+   double x1 = t->v[1].x;
+   double x2 = t->v[2].x;
+   double y0 = t->v[0].y;
+   double y1 = t->v[1].y;
+   double y2 = t->v[2].y;
+   double determinant = (x1-x0)*(y2-y0) - (y1-y0)*(x2-x0);
 
    //fprintf(stderr, "determinant = % .6f\n", determinant);
    //fflush(stderr);
@@ -96,16 +96,16 @@ bool triangleIsCCW(Triangle *t)
 /*
 bool triangleIsCCW(Triangle *t)
 {
-   float x0 = t->v[0].x;
-   float x1 = t->v[1].x;
-   float x2 = t->v[2].x;
-   float y0 = t->v[0].y;
-   float y1 = t->v[1].y;
-   float y2 = t->v[2].y;
-   float z0 = t->v[0].z;
-   float z1 = t->v[1].z;
-   float z2 = t->v[2].z;
-   float determinant = x0*(y1*z2-y2*z1)-x1*(y0*z2-y2*z0)+x2*(y0*z1-y1*z0);
+   double x0 = t->v[0].x;
+   double x1 = t->v[1].x;
+   double x2 = t->v[2].x;
+   double y0 = t->v[0].y;
+   double y1 = t->v[1].y;
+   double y2 = t->v[2].y;
+   double z0 = t->v[0].z;
+   double z1 = t->v[1].z;
+   double z2 = t->v[2].z;
+   double determinant = x0*(y1*z2-y2*z1)-x1*(y0*z2-y2*z0)+x2*(y0*z1-y1*z0);
 
    //fprintf(stderr, "determinant = % .6f\n", determinant);
    //fflush(stderr);

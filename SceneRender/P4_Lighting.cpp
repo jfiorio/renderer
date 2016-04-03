@@ -39,15 +39,15 @@ void doSmoothLighting(Scene *scene, List<Triangle> *triangles)
    // Compute the transformation matrix that transforms normal
    // vectors from model coordinates into view coordinates.
    // Get the 3-by-3 part of the model matrix that we need.
-   float m11 = scene->model.v1.x, m12 = scene->model.v2.x, m13 = scene->model.v3.x,
+   double m11 = scene->model.v1.x, m12 = scene->model.v2.x, m13 = scene->model.v3.x,
           m21 = scene->model.v1.y, m22 = scene->model.v2.y, m23 = scene->model.v3.y,
           m31 = scene->model.v1.z, m32 = scene->model.v2.z, m33 = scene->model.v3.z;
    // Get the 3-by-3 part of the view matrix that we need.
-   float v11 = scene->view.v1.x, v12 = scene->view.v2.x, v13 = scene->view.v3.x,
+   double v11 = scene->view.v1.x, v12 = scene->view.v2.x, v13 = scene->view.v3.x,
           v21 = scene->view.v1.y, v22 = scene->view.v2.y, v23 = scene->view.v3.y,
           v31 = scene->view.v1.z, v32 = scene->view.v2.z, v33 = scene->view.v3.z;
    // Compute V*M, the modelview matrix.
-   float mv11 = v11*m11 + v12*m21 + v13*m31,
+   double mv11 = v11*m11 + v12*m21 + v13*m31,
           mv12 = v11*m12 + v12*m22 + v13*m32,
           mv13 = v11*m13 + v12*m23 + v13*m33,
           mv21 = v21*m11 + v22*m21 + v23*m31,
@@ -70,25 +70,25 @@ void doSmoothLighting(Scene *scene, List<Triangle> *triangles)
    for (ListNode<Triangle> *ptr = triangles->head; ptr && ptr->mtrl; ptr = ptr->next)
    {
       // Get all of the values that we need.
-      float s = ptr->mtrl->s; //shininess coefficient
-      float kar = ptr->mtrl->ambient[0];  // red
-      float kdr = ptr->mtrl->diffuse[0];
-      float ksr = ptr->mtrl->specular[0];
-      float car = scene->light->ambient[0];
-      float cdr = scene->light->diffuse[0];
-      float csr = scene->light->specular[0];
-      float kag = ptr->mtrl->ambient[1];  // green
-      float kdg = ptr->mtrl->diffuse[1];
-      float ksg = ptr->mtrl->specular[1];
-      float cag = scene->light->ambient[1];
-      float cdg = scene->light->diffuse[1];
-      float csg = scene->light->specular[1];
-      float kab = ptr->mtrl->ambient[2];  // blue
-      float kdb = ptr->mtrl->diffuse[2];
-      float ksb = ptr->mtrl->specular[2];
-      float cab = scene->light->ambient[2];
-      float cdb = scene->light->diffuse[2];
-      float csb = scene->light->specular[2];
+      double s = ptr->mtrl->s; //shininess coefficient
+      double kar = ptr->mtrl->ambient[0];  // red
+      double kdr = ptr->mtrl->diffuse[0];
+      double ksr = ptr->mtrl->specular[0];
+      double car = scene->light->ambient[0];
+      double cdr = scene->light->diffuse[0];
+      double csr = scene->light->specular[0];
+      double kag = ptr->mtrl->ambient[1];  // green
+      double kdg = ptr->mtrl->diffuse[1];
+      double ksg = ptr->mtrl->specular[1];
+      double cag = scene->light->ambient[1];
+      double cdg = scene->light->diffuse[1];
+      double csg = scene->light->specular[1];
+      double kab = ptr->mtrl->ambient[2];  // blue
+      double kdb = ptr->mtrl->diffuse[2];
+      double ksb = ptr->mtrl->specular[2];
+      double cab = scene->light->ambient[2];
+      double cdb = scene->light->diffuse[2];
+      double csb = scene->light->specular[2];
 
       // Do the calculation at vertex v[0].
 
@@ -127,9 +127,9 @@ void doSmoothLighting(Scene *scene, List<Triangle> *triangles)
       //    c = k_a * c_a + sum_{all lights}( k_d*c_d*(L dot N) + k_s*c_s*(N dot H)^s ) )
 
       // precompute some numbers
-      float diffuseAngle = L.dotProduct(N);
+      double diffuseAngle = L.dotProduct(N);
       diffuseAngle = (diffuseAngle < 0) ? 0.0 : diffuseAngle;
-      float shininess;
+      double shininess;
       if (scene->useHalfVector)
       {
          shininess = N.dotProduct(H);
@@ -141,17 +141,17 @@ void doSmoothLighting(Scene *scene, List<Triangle> *triangles)
       shininess = (shininess < 0) ? 0.0 : pow(shininess, s);
 
       // do red
-      float r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
+      double r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
       ptr->v[0].r = r;
 
       // do green
-      float g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
+      double g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
       ptr->v[0].g = g;
 
       // do blue
-      float b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
+      double b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
       ptr->v[0].b = b;
 
@@ -376,10 +376,10 @@ void doFlatLighting(Scene *scene, List<Triangle> *triangles)
       //    c = k_a * c_a + sum_{all lights}( k_d*c_d*(L dot N) + k_s*c_s*(N dot H)^s ) )
 
       // precompute some numbers
-      float s = ptr->mtrl->s; //shininess coefficient
-      float diffuseAngle = L.dotProduct(N);
+      double s = ptr->mtrl->s; //shininess coefficient
+      double diffuseAngle = L.dotProduct(N);
       diffuseAngle = (diffuseAngle < 0) ? 0.0 : diffuseAngle;
-      float shininess;
+      double shininess;
       if (scene->useHalfVector)
       {
          shininess = N.dotProduct(H);
@@ -391,13 +391,13 @@ void doFlatLighting(Scene *scene, List<Triangle> *triangles)
       shininess = (shininess < 0) ? 0.0 : pow(shininess, s);
 
       // do red
-      float kar = ptr->mtrl->ambient[0];
-      float kdr = ptr->mtrl->diffuse[0];
-      float ksr = ptr->mtrl->specular[0];
-      float car = scene->light->ambient[0];
-      float cdr = scene->light->diffuse[0];
-      float csr = scene->light->specular[0];
-      float r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
+      double kar = ptr->mtrl->ambient[0];
+      double kdr = ptr->mtrl->diffuse[0];
+      double ksr = ptr->mtrl->specular[0];
+      double car = scene->light->ambient[0];
+      double cdr = scene->light->diffuse[0];
+      double csr = scene->light->specular[0];
+      double r = kar*car + kdr*cdr*diffuseAngle + ksr*csr*shininess;
       r = (r <= 1.0) ? r : 1.0;  // clamp the color value at 1.0
       ptr->v[0].r = r;
       ptr->v[1].r = r;
@@ -405,26 +405,26 @@ void doFlatLighting(Scene *scene, List<Triangle> *triangles)
 
 
       // do green
-      float kag = ptr->mtrl->ambient[1];
-      float kdg = ptr->mtrl->diffuse[1];
-      float ksg = ptr->mtrl->specular[1];
-      float cag = scene->light->ambient[1];
-      float cdg = scene->light->diffuse[1];
-      float csg = scene->light->specular[1];
-      float g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
+      double kag = ptr->mtrl->ambient[1];
+      double kdg = ptr->mtrl->diffuse[1];
+      double ksg = ptr->mtrl->specular[1];
+      double cag = scene->light->ambient[1];
+      double cdg = scene->light->diffuse[1];
+      double csg = scene->light->specular[1];
+      double g = kag*cag + kdg*cdg*diffuseAngle + ksg*csg*shininess;
       g = (g <= 1.0) ? g : 1.0;  // clamp the color value at 1.0
       ptr->v[0].g = g;
       ptr->v[1].g = g;
       ptr->v[2].g = g;
 
       // do blue
-      float kab = ptr->mtrl->ambient[2];
-      float kdb = ptr->mtrl->diffuse[2];
-      float ksb = ptr->mtrl->specular[2];
-      float cab = scene->light->ambient[2];
-      float cdb = scene->light->diffuse[2];
-      float csb = scene->light->specular[2];
-      float b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
+      double kab = ptr->mtrl->ambient[2];
+      double kdb = ptr->mtrl->diffuse[2];
+      double ksb = ptr->mtrl->specular[2];
+      double cab = scene->light->ambient[2];
+      double cdb = scene->light->diffuse[2];
+      double csb = scene->light->specular[2];
+      double b = kab*cab + kdb*cdb*diffuseAngle + ksb*csb*shininess;
       b = (b <= 1.0) ? b : 1.0;  // clamp the color value at 1.0
       ptr->v[0].b = b;
       ptr->v[1].b = b;

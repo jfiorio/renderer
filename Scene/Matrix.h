@@ -14,17 +14,17 @@ class Matrix
 
       Matrix(Vector v);   /* translation matrix */
 
-      Matrix(float d);    /* diagonal matrix */
+      Matrix(double d);    /* diagonal matrix */
 
-      Matrix(float x, float y, float z);  /* scalling matrix */
+      Matrix(double x, double y, double z);  /* scalling matrix */
 
-      Matrix(float theta, float x, float y, float z); /* rotation matrix */
+      Matrix(double theta, double x, double y, double z); /* rotation matrix */
 
       Matrix(Vector _v1, Vector _v2, Vector _v3, Vector _v4);
 
-      void setColumn(int col, float x, float y, float z, float w);
+      void setColumn(int col, double x, double y, double z, double w);
 
-      Matrix times(float s);  /* scalar times Matrix */
+      Matrix times(double s);  /* scalar times Matrix */
 
       Vertex times(Vertex v);  /* Matrix times Vertex */
 

@@ -7,37 +7,37 @@ P9_Rasterize::P9_Rasterize() : PipelineStage()
   attributes |= (STAGE_ATTRIB_READ_VERTEX_POSITION | STAGE_ATTRIB_WRITE_FRAGMENT_LIST);
 }
 
-ALIGN16 __m256d zero = _mm256_set1_pd(0); 
-ALIGN16 __m256i swap_2x1 = _mm256_setr_epi64x(0x2, 0x0, 0x2, 0x0);
-ALIGN16 __m256d mask_4d = _mm256_setr_pd(-0x1, -0x1, -0x1, 0x0);
-ALIGN16 __m128i mask_4 = _mm_setr_epi32(-0x1, -0x1, -0x1, -0x1);
+ALIGN16 __m256d zero = _mm256_set_pd(0, 0, 0, 0); 
+ALIGN16 __m256i swap_4x2 = _mm256_set_epi64x(0x2, 0x0, 0x2, 0x0);
+ALIGN16 __m256i swap_2x1 = _mm256_set_epi64x(0x0, 0x2, 0x0, 0x2);
+ALIGN16 __m256i swap_mid = _mm256_set_epi64x(0x3, 0x1, 0x2, 0x0);
+
+ALIGN16 __m256i mask_3 = _mm256_set_epi64x( 0x0, -0x1, -0x1, -0x1);
+ALIGN16 __m256i mask_4 = _mm256_set_epi64x(-0x1, -0x1, -0x1, -0x1);
+ALIGN16 __m256d mask_4d = _mm256_set_pd(0x0, -0x1, -0x1, -0x1);
 
 void P9_Rasterize::processTriangles(Context *context)
-{    
-   // Unfortunately we can't use floats for the iterative version of the 
-   // triangle rasterization algorithm; otherwise there is a loss of precision 
-   // in the calculations and we get random artifacts that we don't want.
-   // Everything here is (mostly) the same as in the double version except 
-   // for the [down]casting of alpha, beta, and gamma for storage.
-   
-   ALIGN16 __m256d one = _mm256_set1_pd(1);
+{
+   ALIGN16 __m256d one = _mm256_set_pd(1, 1, 1, 1);
 
    ALIGN16 avx_fpoint2 vertices[2][3], vert_diff_un[2][3], vert_ordered[2][2];
    ALIGN16 avx_fpoint2 vert_cross_t[2][3], vert_swap[2][3];
    ALIGN16 avx_fpoint2 vert_diff_xt[2][3], vert_diff_yt[2][3];
-   ALIGN16 avx_fpoint2 alpha_num_t[2], gamma_num_t[2];
-   ALIGN16 avx_fpoint2 gamma_denom_t[2];
+   ALIGN16 avx_fpoint2 alpha_num_t[2], beta_num_t[2], gamma_num_t[2];
+   ALIGN16 avx_fpoint2 alpha_denom_t[2], beta_denom_t[2], gamma_denom_t[2];
    ALIGN16 avx_fpoint2 max[2], min[2];
-   ALIGN16 avx_fpoint2 ymaxxmin[2], dim[2];
-
+   
    ALIGN16 avx_fpoint2 vert_cross[3];
    ALIGN16 avx_fpoint2 alpha, beta, gamma;
-   ALIGN16 avx_fpoint2 alpha_num, gamma_num;
-   ALIGN16 avx_fpoint2 gamma_denom;
+   ALIGN16 avx_fpoint2 alpha_num, beta_num, gamma_num;
+   ALIGN16 avx_fpoint2 alpha_denom, beta_denom, gamma_denom;
    
-   ALIGN16 avx_fpoint2 vert_diff_rfact;
    ALIGN16 avx_fpoint2 vert_diff_x[3], vert_diff_y[3], vert_diff_r[3];
-      
+
+   ALIGN16 avx_fpoint2 ymaxxmin[2], dim[2];
+   ALIGN16 avx_fpoint2 maxdim, mindim, temp_a, temp_b, maxy_broad;
+   int maxx, maxy;
+   
    Pool<Fragment> *fragmentPool = context->fragmentPool;
    ListNode<Triangle> *triangles[2][2]; 
    ListNode<Triangle> *ptr = context->triangles->head;
@@ -45,14 +45,14 @@ void P9_Rasterize::processTriangles(Context *context)
    { 
       // load vertices for the next 2x2 triangles
       // (note: loading done so as to favor the vertex difference operation)
-      int c=0;
+      int cb=0; int ca[2] = {0, 0}; int c=0;
       triangles[0][0] = 0;
       triangles[0][1] = 0;
       triangles[1][0] = 0;
       triangles[1][1] = 0;
-      for (int t=0; (t<2) && ptr; t++)
+      for (int t=0; (t<2) && ptr; t++,cb++)
       {
-        for (int i=0; (i<2) && ptr; i++)
+        for (int i=0; (i<2) && ptr; i++,ca[t]++)
         {
           vertices[t][0].values_ji[i].xj = ptr->v[1].x; 
           vertices[t][0].values_ji[i].yi = ptr->v[0].y;
@@ -66,7 +66,7 @@ void P9_Rasterize::processTriangles(Context *context)
         }  
       }
 
-      // do calculations for next 2x2 triangles
+      // do 2 times of 2 triangles of the following
       for (int t=0; t<2; t++)
       {
         // compute maxs and mins for each of the next 2 triangles
@@ -156,87 +156,80 @@ void P9_Rasterize::processTriangles(Context *context)
       vert_diff_y[2].data = _mm256_div_pd(vert_diff_y[2].data, gamma_denom.data);     
 
       // compute and add y restoration factors to x decrement factors
-      vert_diff_rfact.data = _mm256_set_pd(dim[1].data[2], dim[0].data[2], dim[1].data[0], dim[0].data[0]);
+      maxy_broad.data = _mm256_set_pd(dim[1].data[2], dim[0].data[2], dim[1].data[0], dim[0].data[0]);
 
-      vert_diff_r[0].data = _mm256_mul_pd(vert_diff_y[0].data, vert_diff_rfact.data);
-      vert_diff_r[1].data = _mm256_mul_pd(vert_diff_y[1].data, vert_diff_rfact.data);
-      vert_diff_r[2].data = _mm256_mul_pd(vert_diff_y[2].data, vert_diff_rfact.data);
+      vert_diff_r[0].data = _mm256_mul_pd(vert_diff_y[0].data, maxy_broad.data);
+      vert_diff_r[1].data = _mm256_mul_pd(vert_diff_y[1].data, maxy_broad.data);
+      vert_diff_r[2].data = _mm256_mul_pd(vert_diff_y[2].data, maxy_broad.data);
       vert_diff_x[0].data = _mm256_add_pd(vert_diff_x[0].data, vert_diff_r[0].data);
       vert_diff_x[1].data = _mm256_add_pd(vert_diff_x[1].data, vert_diff_r[1].data);
       vert_diff_x[2].data = _mm256_add_pd(vert_diff_x[2].data, vert_diff_r[2].data);
-      
-      int ip[4] = { 0, 1, 0, 1 };
-      int tp[4] = { 0, 0, 1, 1 };
-      
-      for (int d=0; d<4; d++)
+  
+      int d=0, m=0;
+      for (int t=0; t<2; t++,m+=2)
       {
-        int i = ip[d];
-        int t = tp[d];
-        int m = t << 1;
-        
-        ListNode<Triangle> *tri = triangles[i][t];
-        if (!tri) { continue; }
-        int x1 = min[i].data[m];
-        int x2 = max[i].data[m];
-        int y1 = min[i].data[m+1];
-        int y2 = max[i].data[m+1];
-        
-        double a = alpha.data[d];
-        double b = beta.data[d];
-        double g = gamma.data[d];
-        double gx = vert_diff_x[0].data[d];
-        double ax = vert_diff_x[1].data[d];
-        double bx = vert_diff_x[2].data[d];
-        double gy = vert_diff_y[0].data[d];
-        double ay = vert_diff_y[1].data[d];          
-        double by = vert_diff_y[2].data[d];  
-
-        double z0 = tri->v[0].z;
-        double z1 = tri->v[1].z;
-        double z2 = tri->v[2].z;
-        
-        __m128 abg32;
-        __m256d abg, abgx, abgy, zcoords;
-        __m256d z[3], zb[3];
-        abg = z[0] = _mm256_setr_pd(a, b, g, 0);
-        abgx = z[1] = _mm256_setr_pd(ax, bx, gx, 0);
-        abgy = z[2] = _mm256_setr_pd(ay, by, gy, 0);
-        zcoords = _mm256_setr_pd(z0, z1, z2, 0);
-        for (int j=0; j<3; j++)
+        for (int i=0; i<2; i++,d++)
         {
-          z[j] = _mm256_mul_pd(z[j], zcoords);
-          zb[j] = _mm256_permute2f128_pd(z[j], z[j], 0x01);
-          z[j] = _mm256_hadd_pd(z[j], zb[j]);
-          z[j] = _mm256_hadd_pd(z[j], z[j]);
-        }
-        abg = _mm256_blend_pd(abg, z[0], 0b1000);
-        abgx = _mm256_blend_pd(abgx, z[1], 0b1000);
-        abgy = _mm256_blend_pd(abgy, z[2], 0b1000);
-                  
-        int findex = 0;
-        ListNode<Fragment> *fragments = fragmentPool->beginAllocate();
-        ListNode<Fragment> *f = fragments;
-        for (int y=y2; y>y1; y--)
-        {
-          for (int x=x1; x<x2; x++)
+          // min[0] = { minxa, minya, minxb, minyb }
+          // min[1] = { minxc, minyc, minxd, minyd }
+          //
+          // alpha,beta,gamma,diffs = { a, c, b, d }
+          // triangles = { a, b },
+          //             { c, d }
+          
+          ListNode<Triangle> *tri = triangles[i][t];
+          if (!tri) { continue; }
+          int x1 = min[i].data[m];
+          int x2 = max[i].data[m];
+          int y1 = min[i].data[m+1];
+          int y2 = max[i].data[m+1];
+          
+          double a = alpha.data[d];
+          double b = beta.data[d];
+          double g = gamma.data[d];
+          double gx = vert_diff_x[0].data[d];
+          double ax = vert_diff_x[1].data[d];
+          double bx = vert_diff_x[2].data[d];
+          double gy = vert_diff_y[0].data[d];
+          double ay = vert_diff_y[1].data[d];          
+          double by = vert_diff_y[2].data[d];  
+                    
+          ALIGN16 avx_fpoint2 abg, abgx, abgy, zcoords; 
+          abg.data = _mm256_setr_pd(a, b, g, 0);
+          abgx.data = _mm256_setr_pd(ax, bx, gx, 0);
+          abgy.data = _mm256_setr_pd(ay, by, gy, 0);
+          
+          int findex = 0;
+          ListNode<Fragment> *fragments = fragmentPool->beginAllocate();
+          ListNode<Fragment> *f = fragments;
+          for (int y=y2; y>y1; y--)
           {
-            if (_mm256_testz_pd(abg, mask_4d))
+            for (int x=x1; x<x2; x++)
             {
-              f = f->next;
-              findex++;
-              f->xIndex = x;
-              f->yIndex = y;
-              abg32 = _mm256_cvtpd_ps(abg);
-              _mm_maskstore_ps(&f->alpha, mask_4, abg32);
-            } 
-            abg = _mm256_add_pd(abg, abgy);
+              if (_mm256_testz_pd(abg.data, mask_4d))
+              {
+                f = f->next;
+                findex++;
+                f->xIndex = x;
+                f->yIndex = y;
+                zcoords.data = _mm256_setr_pd(tri->v[0].z, tri->v[1].z, tri->v[2].z, 0);
+                zcoords.data = _mm256_mul_pd(abg.data, zcoords.data);
+                zcoords.data = _mm256_hadd_pd(zcoords.data, zcoords.data);
+                zcoords.data = _mm256_add_pd(zcoords.data, _mm256_setr_pd(zcoords.data[2], 0, 0, 0));
+                f->zCoord = zcoords.data[0];
+                _mm256_maskstore_pd(&f->alpha, mask_3, abg.data);
+                //_mm256_maskstore_pd(&f->r, mask_4, zero);
+                *(unsigned int*)(&f->r) = 0;
+              }
+              abg.data = _mm256_add_pd(abg.data, abgy.data);
+            }
+            abg.data = _mm256_sub_pd(abg.data, abgx.data);
           }
-          abg = _mm256_sub_pd(abg, abgx);
+          fragmentPool->endAllocate(f, findex, &tri->fragments);
+          tri->fragmentPool = fragmentPool;
+          if (c==d) { return; }
         }
-        fragmentPool->endAllocate(f, findex, &tri->fragments);
-        tri->fragmentPool = fragmentPool;
-        if (c==d) { return; }
-      }
-   }        
+      }        
+	 }
    return;
 }

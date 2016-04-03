@@ -8,7 +8,7 @@ class FrameBuffer
     int width;  /* the framebuffer's width */
     int height; /* the framebuffer's height */
     unsigned char *pixel_buffer; /* contains the pixel's color data for a rendered frame */
-    float *z_buffer;            /* contains the pixel's depth data */
+    double *z_buffer;            /* contains the pixel's depth data */
     
     /* coordinates of the current viewport within the framebuffer */
     int vp_ul_x; /* upper left hand corner */
@@ -31,12 +31,12 @@ class FrameBuffer
     void clearzVP();  /* clear the viewport's z-buffer */
     
     void   getPixelFB(int x, int y, unsigned char **c); /* get pixel from framebuffer */
-    float  getDepthFB(int x, int y);          /* get pixel's depth from the framebuffer */
-    void   setPixelFB(int x, int y, unsigned char *c, float z); /* set pixel in the framebuffer */
+    double getDepthFB(int x, int y);          /* get pixel's depth from the framebuffer */
+    void   setPixelFB(int x, int y, unsigned char *c, double z); /* set pixel in the framebuffer */
     void   getPixelVP(int x, int y, unsigned char **c); /* get pixel from within the vewport */
-    float  getDepthVP(int x, int y);          /* get pixel's depth from within the vewport */
+    double getDepthVP(int x, int y);          /* get pixel's depth from within the vewport */
 
-    inline void setPixelVP(int x, int y, int pixel/*unsigned char *c*/, float z)
+    inline void setPixelVP(int x, int y, int pixel/*unsigned char *c*/, double z)
     {
       int offset = (vp_ul_y + y)*width + vp_ul_x + x;
        unsigned char *p = pixel_buffer + offset*3;

@@ -6,36 +6,36 @@ Vertex::Vertex()
 {
    set(0.0, 0.0, 0.0, 1.0);
 
-   setColor(0.0f, 0.0f, 0.0f, 0.0f);
+   setColor(0.0, 0.0, 0.0, 0.0);
 
-   s = 0.0f;
-   t = 0.0f;
+   s = 0.0;
+   t = 0.0;
 
    n = Vector();
 }
 
 
-Vertex::Vertex(float _x, float _y, float _z)
+Vertex::Vertex(double _x, double _y, double _z)
 {
    set(_x, _y, _z, 1.0);
 
-   setColor(0.0f, 0.0f, 0.0f, 0.0f);
+   setColor(0.0, 0.0, 0.0, 0.0);
 
-   s = 0.0f;
-   t = 0.0f;
+   s = 0.0;
+   t = 0.0;
 
    n = Vector();
 }
 
 
-Vertex::Vertex(float _x, float _y, float _z, float _w)
+Vertex::Vertex(double _x, double _y, double _z, double _w)
 {
    set(_x, _y, _z, _w);
 
-   setColor(0.0f, 0.0f, 0.0f, 0.0f);
+   setColor(0.0, 0.0, 0.0, 0.0);
 
-   s = 0.0f;
-   t = 0.0f;
+   s = 0.0;
+   t = 0.0;
 
    n = Vector();
 }
@@ -47,13 +47,13 @@ Vertex::Vertex(float v[4])
 }
 
 
-void Vertex::set(float _x, float _y, float _z)
+void Vertex::set(double _x, double _y, double _z)
 {
    set(_x, _y, _z, 1.0);
 }
 
 
-void Vertex::set(float _x, float _y, float _z, float _w)
+void Vertex::set(double _x, double _y, double _z, double _w)
 {
    x = _x;
    y = _y;
@@ -63,14 +63,14 @@ void Vertex::set(float _x, float _y, float _z, float _w)
 
 
 /* sets the color and transparancy of this vertex to (r,g,b,a) */
-void Vertex::setColor(float _r, float _g, float _b, float _a)
+void Vertex::setColor(double _r, double _g, double _b, double _a)
 {
-   if ( (_r < 0.0f) || (_r > 1.0)
-     || (_g < 0.0f) || (_g > 1.0)
-     || (_b < 0.0f) || (_b > 1.0)
-     || (_a < 0.0f) || (_a > 1.0) )
+   if ( (_r < 0.0) || (_r > 1.0)
+     || (_g < 0.0) || (_g > 1.0)
+     || (_b < 0.0) || (_b > 1.0)
+     || (_a < 0.0) || (_a > 1.0) )
    {
-      fprintf(stderr,"ERROR! Invalid float color for vertex\n");
+      fprintf(stderr,"ERROR! Invalid double color for vertex\n");
       r = _r;
       g = _g;
       b = _b;
@@ -89,9 +89,9 @@ void Vertex::setColor(float _r, float _g, float _b, float _a)
 }
 
 
-void Vertex::setColor(float _r, float _g, float _b)
+void Vertex::setColor(double _r, double _g, double _b)
 {
-   setColor(_r, _g, _b, 0.0f);
+   setColor(_r, _g, _b, 0.0);
    return;
 }
 
@@ -129,7 +129,7 @@ void Vertex::setColor(int _r, int _g, int _b)
 
 
 /* sets the texture coordinate of this vertex to (s, t) */
-void Vertex::setCoords(float _s, float _t)
+void Vertex::setCoords(double _s, double _t)
 {
    s = _s;
    t = _t;
@@ -145,7 +145,7 @@ void Vertex::setNormal(Vector * _n)
 
 
 /* needed for perspective division step in the rendering pipeline */
-Vertex Vertex::times(float scalar) /* scalar times Vertex */
+Vertex Vertex::times(double scalar) /* scalar times Vertex */
 {
    Vertex temp = Vertex(scalar*x, scalar*y, scalar*z, scalar*w);
    temp.r = r;

@@ -8,7 +8,7 @@
    We actually need several such types of list, but each should support these operations: 
    1) initialize its node's forward links
    2) divide itself into n sub-lists
-   3) (re)form itself from a merging of n sub-lists
+   3) form itself from a merging of n sub-lists
    We might have a base list class that implements these operations and derived classes for
    each list subtype. Unfortunately the last 2 operations would require either an explicit downcast
    or individual stubs to be present in each derived class to return the appropriate type.
@@ -414,11 +414,6 @@ class LinkedList : public ListStoragePolicy<S, T, initSize>,
        as if the variable claims independent storage [for pool items] between instances
        (again, we can use divide to distribute a pool of PREDEFINED size amongst n 
         instances, where n is a value that can only be determined at run-time)
-     EDIT: for now, pool storage is dynamically allocated at initialization. Depending on 
-     compiler used, a template class's static member arrays may be placed in the .data 
-     section; in this case, creating large pools with static storage will lead to bloated 
-     executable size. Change all instances below of "dynamic" to "static" if this is not
-     the case for your compiler.
 **/
 template <typename T, int initSize = 0>
 class Pool : public LinkedList <T, dynamic, allocate, initSize>

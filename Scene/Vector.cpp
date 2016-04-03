@@ -11,19 +11,19 @@ Vector::Vector()
 }
 
 
-Vector::Vector(float _x, float _y, float _z)
+Vector::Vector(double _x, double _y, double _z)
 {
    set(_x, _y, _z, 0.0);
 }
 
 
-Vector::Vector(float _x, float _y, float _z, float _w)
+Vector::Vector(double _x, double _y, double _z, double _w)
 {
    set(_x, _y, _z, _w);
 }
 
 
-void Vector::set(float _x, float _y, float _z, float _w)
+void Vector::set(double _x, double _y, double _z, double _w)
 {
    x = _x;
    y = _y;
@@ -32,7 +32,7 @@ void Vector::set(float _x, float _y, float _z, float _w)
 }
 
 
-Vector Vector::times(float s) /* scalar times Vector */
+Vector Vector::times(double s) /* scalar times Vector */
 {
    return Vector(s*x, s*y, s*z, s*w);
 }
@@ -48,14 +48,14 @@ Vector Vector::crossProduct(Vector v)
    return Vector((y*v.z)-(z*v.y), (z*v.x)-(x*v.z), (x*v.y)-(y*v.x));
 }
 
-float Vector::dotProduct(Vector v)
+double Vector::dotProduct(Vector v)
 {
    return x*v.x + y*v.y + z*v.z;
 }
 
 Vector Vector::normalize()  /* return a vector with length 1 */
 {
-   float norm = sqrt( x*x + y*y + z*z );
+   double norm = sqrt( x*x + y*y + z*z );
    return Vector(x/norm, y/norm, z/norm);
 }
 

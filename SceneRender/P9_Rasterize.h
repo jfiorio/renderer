@@ -11,15 +11,13 @@
 #define printVectL(x) \
 for (int i=0; i<3; i++) \
 { \
-  printf(" %s[%i].data = { %f, %f, %f, %f, %f, %f, %f, %f }\n", #x, i, \
-  x[i].data[0], x[i].data[1], x[i].data[2], x[i].data[3], \
-  x[i].data[4], x[i].data[5], x[i].data[6], x[i].data[7]); \
+  printf(" %s[%i].data = { %f, %f, %f, %f }\n", #x, i, \
+  x[i].data[0], x[i].data[1], x[i].data[2], x[i].data[3]); \
 }
 
 #define printVect(x) \
-  printf(" %s.data = { %f, %f, %f, %f, %f, %f, %f, %f }\n", #x, \
-  x.data[0], x.data[1], x.data[2], x.data[3], \
-  x.data[4], x.data[5], x.data[6], x.data[7]); 
+  printf(" %s.data = { %f, %f, %f, %f }\n", #x, \
+  x.data[0], x.data[1], x.data[2], x.data[3]); 
 
 class P9_Rasterize : public PipelineStage
 {
@@ -33,28 +31,28 @@ typedef struct
 {
   double x;
   double y;
-} fpoint;
+} dpoint;
 
 typedef struct
 {
   double xj;
   double yi;
-} fpoint_ji;
+} dpoint_ji;
 
 typedef struct
 {
   double xi;
   double yj;
-} fpoint_ij;
+} dpoint_ij;
 
 typedef struct
 {
   union
   {
     ALIGN16 __m256d data;
-    fpoint values[2];
-    fpoint_ji values_ji[2];
-    fpoint_ij values_ij[2];
+    dpoint values[2];
+    dpoint_ji values_ji[2];
+    dpoint_ij values_ij[2];
   };
 } avx_fpoint2;
 

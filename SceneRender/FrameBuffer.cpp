@@ -51,7 +51,7 @@ FrameBuffer::FrameBuffer(int w, int h)
    }
 
    /* allocate the z-buffer (the depth buffer) */
-   z_buffer = (float *)malloc(sizeof(float) * width * height);
+   z_buffer = (double *)malloc(sizeof(double) * width * height);
    if ( ! z_buffer )
    {
       fprintf(stderr, "ERROR! Unable to allocate memory for z-buffer\n");
@@ -107,21 +107,21 @@ void FrameBuffer::clearFB(unsigned char r, unsigned char g, unsigned char b)
     _mm256_storeu_si256(ptr++, brgbr);
     _mm256_storeu_si256(ptr++, gbrgb);
   }
-  
   // clear the z-buffer (the depth buffer)
   clearzFB();
 }
 
-__m256 one = _mm256_set_ps(1, 1, 1, 1, 1, 1, 1, 1);
+__m256d one = _mm256_set_pd(1, 1, 1, 1);
 
 /* clear the frambuffer's z-buffer (the depth buffer) */
 void FrameBuffer::clearzFB()
 {
-  float *ptr = z_buffer;
+  double *ptr = z_buffer;
   
-  int count = (height*width) >> 3;
-  for (int i=0; i<count; i++, ptr+=8)
-    _mm256_store_ps(ptr, one);
+  int count = (height*width) >> 2;
+  for (int i=0; i<count; i++, ptr+=4)
+    _mm256_store_pd(ptr, one);
+   
 }
 
 
@@ -186,14 +186,14 @@ void FrameBuffer::getPixelFB(int x, int y, unsigned char **c)
 
 
 /* get the depth of the pixel with coordinates (x,y) in the framebuffer */
-float FrameBuffer::getDepthFB(int x, int y)
+double FrameBuffer::getDepthFB(int x, int y)
 {
    return *(z_buffer + y*width + x);
 }
 
 
 /* set the color and depth of the pixel with coordinates (x,y) in the framebuffer */
-void FrameBuffer::setPixelFB(int x, int y, unsigned char *c, float z)
+void FrameBuffer::setPixelFB(int x, int y, unsigned char *c, double z)
 {
    unsigned char *p = pixel_buffer + (y*width + x)*3;
    
@@ -215,14 +215,17 @@ void FrameBuffer::getPixelVP(int x, int y, unsigned char **c)
 
 
 /* get the depth of the pixel with coordinates (x,y) relative to the current viewport */
-float FrameBuffer::getDepthVP(int x, int y)
+double FrameBuffer::getDepthVP(int x, int y)
 {
    return *(z_buffer + (vp_ul_y + y)*width + vp_ul_x + x);  /* ???????????????? */
 }
 
+
+
+
 /* set the color and depth of the pixel with coordinates (x,y) relative to the current viewport */
 
-//void FrameBuffer::setPixelVP(int x, int y, int pixel/*unsigned char *c*/, float z)
+//void FrameBuffer::setPixelVP(int x, int y, int pixel/*unsigned char *c*/, double z)
 //{
 //  int offset = (vp_ul_y + y)*width + vp_ul_x + x;
 //   unsigned char *p = pixel_buffer + offset*3;

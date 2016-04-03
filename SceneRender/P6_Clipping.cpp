@@ -18,17 +18,18 @@ void P6_Clipping::processTriangles(Context *context)
    // the polygon that results when the sticking out
    // Triangle is clipped.
 
+   Scene *scene = context->scene;
    List<Triangle> *triangles = context->triangles;
-   Pool<Triangle> *trianglePool = context->trianglePool;
    ListNode<Triangle> *prev = &triangles->sentinel;
+   Pool<Triangle> *trianglePool = context->trianglePool;
 
    for (ListNode<Triangle> *ptr = triangles->head; ptr; ptr = ptr->next)
    {
       Triangle* tp = ptr;
       ptr->trianglePool = trianglePool;
-      float w0 = fabs( tp->v[0].w );
-      float w1 = fabs( tp->v[1].w );
-      float w2 = fabs( tp->v[2].w );
+      double w0 = fabs( tp->v[0].w );
+      double w1 = fabs( tp->v[1].w );
+      double w2 = fabs( tp->v[2].w );
       if ( fabs( tp->v[0].x ) > w0
         || fabs( tp->v[0].y ) > w0
         || fabs( tp->v[0].z ) > w0
@@ -39,9 +40,9 @@ void P6_Clipping::processTriangles(Context *context)
         || fabs( tp->v[2].y ) > w2
         || fabs( tp->v[2].z ) > w2 )
       {// need to either delete or clip this triangle
-         float w0 = tp->v[0].w;
-         float w1 = tp->v[1].w;
-         float w2 = tp->v[2].w;
+         double w0 = tp->v[0].w;
+         double w1 = tp->v[1].w;
+         double w2 = tp->v[2].w;
          // first check for trivial delete
          if ( (w0 + tp->v[0].x < 0 && w1 + tp->v[1].x < 0 && w2 + tp->v[2].x < 0)
            || (w0 - tp->v[0].x < 0 && w1 - tp->v[1].x < 0 && w2 - tp->v[2].x < 0)
@@ -267,16 +268,16 @@ void P6_Clipping::processTriangles(Context *context)
 void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, int eqn_number)
 {
    // make local copies of several values
-   float vix =  v_inside->x; // "i" for "inside"
-   float viy =  v_inside->y;
-   float viz =  v_inside->z;
-   float viw =  v_inside->w;
-   float vox = v_outside->x; // "o" for "outside"
-   float voy = v_outside->y;
-   float voz = v_outside->z;
-   float vow = v_outside->w;
+   double vix =  v_inside->x; // "i" for "inside"
+   double viy =  v_inside->y;
+   double viz =  v_inside->z;
+   double viw =  v_inside->w;
+   double vox = v_outside->x; // "o" for "outside"
+   double voy = v_outside->y;
+   double voz = v_outside->z;
+   double vow = v_outside->w;
    // interpolate between v_outside and v_inside
-   float t = 0.0;
+   double t;
    if (eqn_number == 1)
       t = -(vow + vox)/( (viw + vix) - (vow + vox) );
    else if (eqn_number == 2)
@@ -290,7 +291,7 @@ void interpolateNewVertex(Vertex* v_outside, Vertex* v_inside, Vertex* v_new, in
    else if (eqn_number == 6)
       t = -(vow - voz)/( (viw - viz) - (vow - voz) );
 
-   t = t + .00001f;  /* keep the new vertex off the edge!! */
+   t = t + .00001;  /* keep the new vertex off the edge!! */
 
    // interpolate the coordinates of the new vertex
    v_new->x = (1-t) * vox + t * vix;

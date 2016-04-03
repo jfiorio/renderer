@@ -21,7 +21,7 @@ void P7_Clip2NDC::processTriangles(Context *context)
    // shading stage
    for (ListNode<Triangle> *ptr = context->triangles->head; ptr; ptr = ptr->next)
    {
-      float w0, w1, w2;
+      double w0, w1, w2;
       w0 = ptr->v[0].w;
       w1 = ptr->v[1].w;
       w2 = ptr->v[2].w;
